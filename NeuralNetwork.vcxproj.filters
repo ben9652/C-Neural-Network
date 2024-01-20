@@ -18,5 +18,19 @@
     <ClCompile Include="src\main.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="libraries\vendor\vc_vector\vc_vector.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="libraries\vendor\vc_vector\vc_vector_tests.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libraries\vendor\vc_vector\vc_vector.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\vendor\vc_vector\vc_vector_tests.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

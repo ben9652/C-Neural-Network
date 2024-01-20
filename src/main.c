@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include <vector>
+#include "vendor/vc_vector/vc_vector_tests.h"
 
-int main()
-{
-	printf("Hello World!");
-	fgetc(stdin);
-	return 0;
+int main() {
+    vc_vector_run_tests();
+    printf("Tests passed.\n");
+    fgetc(stdin);
+    return 0;
 }
