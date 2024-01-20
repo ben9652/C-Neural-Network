@@ -32,5 +32,11 @@
     <ClInclude Include="libraries\vendor\vc_vector\vc_vector_tests.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="libraries\generic_management.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\Vertex.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

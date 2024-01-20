@@ -1,9 +1,11 @@
 #include <stdio.h>
-#include "vendor/vc_vector/vc_vector_tests.h"
+#include "generic_management.h"
 
-int main() {
-    vc_vector_run_tests();
-    printf("Tests passed.\n");
+int main()
+{
+    float number;
+    printf("Datatype of number: %s", typename(number));
+    
     fgetc(stdin);
     return 0;
 }

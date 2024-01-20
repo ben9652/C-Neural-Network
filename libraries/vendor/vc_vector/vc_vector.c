@@ -215,7 +215,7 @@ void vc_vector_clear(vc_vector* vector) {
 
 bool vc_vector_insert(vc_vector* vector, size_t index, const void* value) {
     if (vc_vector_max_count(vector) < vector->count + 1) {
-        if (!vc_vector_realloc(vector, vc_vector_max_count(vector) * GROWTH_FACTOR)) {
+        if (!vc_vector_realloc(vector, (size_t)(vc_vector_max_count(vector) * GROWTH_FACTOR))) {
             return false;
         }
     }
@@ -271,9 +271,9 @@ bool vc_vector_append(vc_vector* vector, const void* values, size_t count) {
     const size_t count_new = count + vc_vector_count(vector);
 
     if (vc_vector_max_count(vector) < count_new) {
-        size_t max_count_to_reserved = vc_vector_max_count(vector) * GROWTH_FACTOR;
+        size_t max_count_to_reserved = (size_t)(vc_vector_max_count(vector) * GROWTH_FACTOR);
         while (count_new > max_count_to_reserved) {
-            max_count_to_reserved *= GROWTH_FACTOR;
+            max_count_to_reserved *= (size_t)GROWTH_FACTOR;
         }
 
         if (!vc_vector_realloc(vector, max_count_to_reserved)) {
