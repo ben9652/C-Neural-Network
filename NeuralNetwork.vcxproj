@@ -19,12 +19,30 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="libraries\ActivationFunction.h" />
+    <ClCompile Include="libraries\error_management.c" />
     <ClCompile Include="libraries\vendor\vc_vector\vc_vector.c" />
     <ClCompile Include="libraries\vendor\vc_vector\vc_vector_tests.c" />
+    <ClCompile Include="src\functions\ActivationFunction.c" />
+    <ClCompile Include="src\functions\Hardlim.c" />
+    <ClCompile Include="src\functions\Hardlims.c" />
+    <ClCompile Include="src\functions\Linear.c" />
+    <ClCompile Include="src\functions\Sigmoid.c" />
+    <ClCompile Include="src\functions\Tanh.c" />
     <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\neurons\NeuronsLayer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="libraries\error_management.h" />
+    <ClInclude Include="libraries\Hardlim.h" />
+    <ClInclude Include="libraries\Hardlims.h" />
+    <ClInclude Include="libraries\HiddenLayer.h" />
+    <ClInclude Include="libraries\InputLayer.h" />
+    <ClInclude Include="libraries\Linear.h" />
+    <ClInclude Include="libraries\NeuronsLayer.h" />
     <ClInclude Include="libraries\generic_management.h" />
+    <ClInclude Include="libraries\Sigmoid.h" />
+    <ClInclude Include="libraries\Tanh.h" />
     <ClInclude Include="libraries\vendor\vc_vector\vc_vector.h" />
     <ClInclude Include="libraries\vendor\vc_vector\vc_vector_tests.h" />
     <ClInclude Include="libraries\Vertex.h" />
