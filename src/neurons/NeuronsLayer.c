@@ -1,8 +1,11 @@
 #include "NeuronsLayer.h"
 #include <stdlib.h>
 
+/* Funciones privadas */
+
 void initRandom();
 void initWithData();
+double* f(double* vector);
 
 NeuronsLayer* new_NeuronsLayer1(Layer_Type type, unsigned int inputsNumber)
 {

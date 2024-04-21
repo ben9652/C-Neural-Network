@@ -22,8 +22,7 @@ typedef union {
 // Constructor
 ActivationFunction* new_ActivationFunction1(enum func_to_use function, double param)
 {
-	if (function == SIGMOID)
-		THROW(FUNCTION_ASSIGNING_EXCEPTION);
+	ASSERT(function != SIGMOID, FUNCTION_ASSIGNING_EXCEPTION);
 
 	size_t size_of_struct = sizeof(ActivationFunction);
 
@@ -67,8 +66,7 @@ ActivationFunction* new_ActivationFunction1(enum func_to_use function, double pa
 
 ActivationFunction* new_ActivationFunction2(enum func_to_use function, double param, double rightShift)
 {
-	if (function != SIGMOID)
-		THROW(FUNCTION_ASSIGNING_EXCEPTION);
+	ASSERT(function == SIGMOID, FUNCTION_ASSIGNING_EXCEPTION);
 
 	size_t size_of_struct = sizeof(ActivationFunction);
 

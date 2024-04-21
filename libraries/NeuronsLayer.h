@@ -1,6 +1,7 @@
 #ifndef __CAPA_NEURONAS_
 #define __CAPA_NEURONAS_
 #include "ActivationFunction.h"
+#include "Matrix.h"
 
 typedef enum {
 	INPUT_LAYER,
@@ -10,19 +11,19 @@ typedef enum {
 } Layer_Type;
 
 typedef struct n_layer {
+	char layerType[2];
+
 	short layerNumber;
-	unsigned int neuronsInLayer;
+	size_t neuronsInLayer;
 
 	/*
 		Matriz de pesos.
-		Si bien es un vector, se lo organizará para imitar a una matriz. Aún así describiremos
-		este atributo como si fuese una matriz.
 	
 		 - El primer índice indica a qué neurona (empezando desde 0) de esta capa está conectada la arista con su respectivo peso.
 		 - El segundo índice indica desde qué neurona de la capa anterior se dirige la arista, es decir, dónde tiene origen esta.
 		 Por ejemplo: weightsMatrix[j][k] es el peso de la arista cuyo origen está en la k-ésima neurona de la capa anterior, y su destino en la j-ésima neurona de esta capa.
 	*/
-	double* weightsMatrix;
+	Matrix weightsMatrix;
 
 	/*
 		Matriz de derivadas.
@@ -39,6 +40,9 @@ typedef struct n_layer {
 	double* sumWeightsGradient;
 
 	ActivationFunction actFunction;
+
+	struct n_layer* prevLayer;
+	struct n_layer* nextLayer;
 
 	/*
 		Entrada que tiene la capa.
@@ -59,6 +63,7 @@ typedef struct n_layer {
 	double* biases;
 	double* biasesGradient;
 	double* sumBiasesGradient;
+	// El tamaño de estos vectores es el mismo que el de neuronsInLayer
 
 	/*
 		Número de entradas de la capa.
@@ -73,6 +78,6 @@ NeuronsLayer* new_NeuronsLayer3(Layer_Type type, unsigned int neuronsInLayer, Ac
 NeuronsLayer* new_NeuronsLayer4(Layer_Type type, unsigned int neuronsInLayer, ActivationFunction af, unsigned int inputsNumber, double* biases);
 NeuronsLayer* new_NeuronsLayer5(Layer_Type type, unsigned int neuronsInLayer, ActivationFunction af, unsigned int inputsNumber, double* weights, double* biases);
 
-
+void outputCalculation(unsigned char isInput);
 
 #endif

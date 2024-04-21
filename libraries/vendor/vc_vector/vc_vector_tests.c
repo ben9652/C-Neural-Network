@@ -150,7 +150,7 @@ void test_vc_vector_capacity() {
     const size_t max_size_of_vector_initialized = count_of_elements_initialized * size_of_element;
     const size_t count_of_elements_ended = 23;
     const size_t size_of_vector_ended = count_of_elements_ended * size_of_element;
-    const size_t max_count_of_vector_ended = count_of_elements_initialized * growth_factor;
+    const size_t max_count_of_vector_ended = (size_t)(count_of_elements_initialized * growth_factor);
     const size_t max_size_of_vector_ended = max_count_of_vector_ended * size_of_element;
 
     vc_vector* vector = vc_vector_create(count_of_elements_initialized, size_of_element, NULL);
