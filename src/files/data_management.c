@@ -1,7 +1,14 @@
 #include "data_management.h"
 #include "error_management.h"
 #include <string.h>
-#include "vc_vector/vc_vector.h"
+#include <direct.h>
+
+struct data_management
+{
+	char* path;
+	Matrix* mat;
+	Vector* vec;
+};
 
 #define MAX_LINE_LENGTH 2000
 
@@ -26,14 +33,25 @@ DataManagement* DataManagement_new(const char* main_path)
 	else
 		strcpy_s(de->path, sizeOfPath, main_path);
 
+	if(main_path != NULL && strcmp(main_path, "./") != 0)
+		ASSERT(_mkdir(main_path) != ENOENT, FOLDER_WRONG_PATH);
+
+	de->mat = NULL;
+	de->vec = NULL;
+
 	return de;
+}
+
+void DataManagement_delete(DataManagement* de)
+{
+	free(de->path);
+	free(de);
 }
 
 double convertToDouble(const char* str)
 {
 	char* ptr;
 	double number;
-
 	number = strtod(str, &ptr);
 
 	ASSERT(ptr != str, PARSE_NOT_PARSED_EXCEPTION);
@@ -90,17 +108,23 @@ void DataManagement_set_data(DataManagement* de, Matrix* mat, Vector* vec)
 	ASSERT(mat->Buffer, MEMORY_POINTING_TO_NOTHING);
 	ASSERT(vec->Buffer, MEMORY_POINTING_TO_NOTHING);
 
+	DataManagement_release_data(de);
+
 	de->mat = Matrix_new_copy(mat);
 	de->vec = Vector_new_copy(vec);
 }
 
 void DataManagement_release_data(DataManagement* de)
 {
+	ASSERT(de, MEMORY_POINTING_TO_NOTHING);
+
 	Matrix_delete(de->mat);
+	de->mat = NULL;
 	Vector_delete(de->vec);
+	de->vec = NULL;
 }
 
-void DataManagement_readMatVec(DataManagement* de, const char* filename)
+long DataManagement_readMatVec(DataManagement* de, const char* filename, long position)
 {
 	ASSERT(de, MEMORY_POINTING_TO_NOTHING);
 	ASSERT(filename, MEMORY_POINTING_TO_NOTHING);
@@ -108,7 +132,12 @@ void DataManagement_readMatVec(DataManagement* de, const char* filename)
 	FILE* fd;
 	ASSERT(de, MEMORY_NOT_ASSIGNED_EXCEPTION);
 	fopen_s(&fd, path_to_file, "r");
-	ASSERT(fd, FILE_NOT_EXISTING_EXCEPTION);
+	ASSERT(fd, FILE_DOESNT_EXISTS_EXCEPTION);
+
+	free((char*)path_to_file);
+
+	if(position != 0)
+		fseek(fd, position, SEEK_SET);
 
 	char line[2000];
 	char* token;
@@ -118,7 +147,7 @@ void DataManagement_readMatVec(DataManagement* de, const char* filename)
 	Matrix* mat = NULL;
 	Vector* vec = NULL;
 
-	vc_vector* first_row = vc_vector_create(10, sizeof(VEC_T), NULL);
+	Vector* first_row = Vector_new_container(10);
 
 	// Flag para determinar cuándo se inicia el vector
 	unsigned char vectorStart = 0;
@@ -127,6 +156,14 @@ void DataManagement_readMatVec(DataManagement* de, const char* filename)
 	{
 		if (strcmp(line, "\n") == 0)
 		{
+			// Si ya se guardó el vector, se rompe el bucle indicando que ya se recogió la matriz y el vector
+			if (vectorStart)
+				break;
+
+			// Si no se recogió el vector, estamos en una línea con un caracter '\n', y encima la matriz es nula, evidentemente es porque estamos en el proceso de obtener otra matriz y otro vector por consecuencia de habernos posicionado más adelante en el archivo mediante el parámetro `position`
+			else if (mat == NULL)
+				continue;
+
 			vectorStart = 1;
 			continue;
 		}
@@ -140,15 +177,17 @@ void DataManagement_readMatVec(DataManagement* de, const char* filename)
 			size_t col = 0;
 			while (token != NULL)
 			{
+				if(strcmp(token, "\n") == 0)
+					break;
 				number = convertToDouble(token);
 
 				// Me fijo, con un vector dinámico, cuál es la cantidad de columnas. Y cuando ya las obtuve, agrego elementos en la matriz ya creada.
 				if (row == 0)
-					vc_vector_push_back(first_row, &number);
+					Vector_add(first_row, number);
 				else
 					Matrix_set(mat, M_Pos(row, col), number);
 
-				token = strtok_s(NULL, ",\n", &next_tok);
+				token = strtok_s(NULL, ",", &next_tok);
 				col++;
 			}
 
@@ -157,11 +196,11 @@ void DataManagement_readMatVec(DataManagement* de, const char* filename)
 			{
 				mat = Matrix_new_null(rows, col);
 
-				VEC_T* data = (VEC_T*)vc_vector_data(first_row);
-				Matrix_set_row(mat, row, data, vc_vector_count(first_row));
+				VEC_T* data = (VEC_T*)first_row->Buffer;
+				Matrix_set_row(mat, row, data, first_row->size);
 
-				vc_vector_release(first_row);
-				first_row = vc_vector_create(10, sizeof(VEC_T), NULL);
+				Vector_delete(first_row);
+				first_row = Vector_new_container(10);
 			}
 			row++;
 		}
@@ -172,33 +211,41 @@ void DataManagement_readMatVec(DataManagement* de, const char* filename)
 			token = strtok_s(line, ",", &next_tok);
 			while (token != NULL)
 			{
+				if (strcmp(token, "\n") == 0)
+					break;
 				number = convertToDouble(token);
-				vc_vector_push_back(first_row, &number);
+				Vector_add(first_row, number);
 				token = strtok_s(NULL, ",", &next_tok);
 			}
 			
-			vec = Vector_new_array((VEC_T*)vc_vector_data(first_row), vc_vector_count(first_row));
-			vc_vector_release(first_row);
+			vec = Vector_new_array(first_row->Buffer, first_row->size);
+			Vector_delete(first_row);
 		}
 	}
 
-	ASSERT(mat, MEMORY_NOT_ASSIGNED_EXCEPTION);
-	ASSERT(vec, MEMORY_NOT_ASSIGNED_EXCEPTION);
-	de->mat = mat;
-	de->vec = vec;
+	DataManagement_set_data(de, mat, vec);
+
+	Matrix_delete(mat);
+	Vector_delete(vec);
+
+	long currentPosition = ftell(fd);
 
 	fclose(fd);
+
+	return currentPosition;
 }
 
-void DataManagement_writeMatVec(DataManagement* de, const char* filename)
+void DataManagement_writeMatVec(DataManagement* de, const char* filename, Write_Mode write_mode)
 {
 	ASSERT(de, MEMORY_POINTING_TO_NOTHING);
 	ASSERT(filename, MEMORY_POINTING_TO_NOTHING);
 	const char* path_to_file = get_full_path(de, filename);
 	FILE* fd;
 	ASSERT(de, MEMORY_NOT_ASSIGNED_EXCEPTION);
-	fopen_s(&fd, path_to_file, "w");
-	ASSERT(fd, FILE_NOT_EXISTING_EXCEPTION);
+	fopen_s(&fd, path_to_file, write_mode == APPEND ? "a" : "w");
+	ASSERT(fd, FILE_WRONG_PATH);
+
+	free((char*)path_to_file);
 
 	ASSERT(de->mat, MATRIX_NULL_PASSED_EXCEPTION);
 	ASSERT(de->vec, ARRAY_NULL_PASSED_EXCEPTION);
@@ -214,9 +261,7 @@ void DataManagement_writeMatVec(DataManagement* de, const char* filename)
 		for (size_t j = 0; j < mat->columns; j++)
 		{
 			MAT_T matrix_element = Matrix_get(mat, M_Pos(i, j));
-			fprintf(fd, "%.17lf", matrix_element);
-			if (j < mat->columns - 1)
-				fprintf(fd, ",");
+			fprintf(fd, "%.17lf,", matrix_element);
 		}
 		fprintf(fd, "\n");
 	}
@@ -226,11 +271,19 @@ void DataManagement_writeMatVec(DataManagement* de, const char* filename)
 
 	// Escribir el vector
 	for (size_t i = 0; i < vec->size; i++)
-	{
-		fprintf(fd, "%.17lf", Vector_get(vec, i));
-		if (i < vec->size - 1)
-			fprintf(fd, ",");
-	}
+		fprintf(fd, "%.17lf,", Vector_get(vec, i));
+	
+	fprintf(fd, "\n\n");
 
 	fclose(fd);
+}
+
+Matrix* DataManagement_getMat(DataManagement* de)
+{
+	return de->mat;
+}
+
+Vector* DataManagement_getVec(DataManagement* de)
+{
+	return de->vec;
 }

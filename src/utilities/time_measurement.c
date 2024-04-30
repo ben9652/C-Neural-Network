@@ -23,7 +23,7 @@ float get_elapsed_time(Time_Unit unit)
 	if (unit == MEASURE_MICROSECONDS)
 		return time_in_s * 1e6f;
 
-	else if (unit == MEASURE_MILISECONDS)
+	else if (unit == MEASURE_MILLISECONDS)
 		return time_in_s * 1e3f;
 
 	else

@@ -30,6 +30,7 @@ inline Matrix_Position M_Pos(size_t i, size_t j);
 /* Los "new" serán para la creación en el heap */
 
 Matrix* Matrix_new(size_t rows, size_t columns);
+Matrix* Matrix_new_zero(size_t rows, size_t columns);
 Matrix* Matrix_new_copy(Matrix* newMatrix);
 Matrix* Matrix_new_array(MAT_T* newMatrix, size_t rows, size_t columns);
 Matrix* Matrix_new_null(size_t rows, size_t columns);
@@ -42,7 +43,7 @@ Matrix Matrix_create(size_t rows, size_t columns);
 Matrix Matrix_create_copy(MAT_T* newMatrix, size_t rows, size_t columns);
 Matrix Matrix_create_null(size_t rows, size_t columns);
 Matrix Matrix_create_identity(size_t order);
-Matrix Matrix_create_random(Matrix_Datatype datatype, size_t rows, size_t columns);
+Matrix Matrix_create_random(Matrix_Datatype datatype, void* min, void* max, size_t rows, size_t columns);
 
 /* Constructores de copias */
 
@@ -61,12 +62,20 @@ inline void Matrix_set(Matrix* matrix, Matrix_Position pos, MAT_T element);
 inline MAT_T Matrix_get(Matrix* matrix, Matrix_Position pos);
 
 void Matrix_set_row(Matrix* matrix, size_t row_index, MAT_T* row, size_t size);
+void Matrix_set_another_matrix(Matrix* dest, Matrix* src);
 
-/* Operaciones con matrices */
+/* Operaciones con matrices devolviendo una nueva matriz */
 
 Matrix* Matrix_sum(Matrix* mat1, Matrix* mat2);
+MAT_T Matrix_sum_element(Matrix* mat, Matrix_Position pos, MAT_T scalar);
 Matrix* Matrix_mul(Matrix* mat1, Matrix* mat2);
 Matrix* Matrix_transpose(Matrix* mat);
+Matrix* Matrix_product_with_scalar(Matrix* mat, MAT_T scalar);
+
+/* Operaciones con matrices devolviendo modificando la primera matriz */
+
+void Matrix_sum_void(Matrix* mat1, Matrix* mat2);
+void Matrix_product_with_scalar_void(Matrix* mat, MAT_T scalar);
 
 // Muestra de la matriz
 void Matrix_show(Matrix* mat);

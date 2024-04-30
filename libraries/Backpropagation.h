@@ -1,16 +1,24 @@
 #ifndef __BACKPROPAGATION__
 #define __BACKPROPAGATION__
-#include "NeuronsLayer.h"
+#include "Layer.h"
 
-typedef struct {
+struct n_layer;
+
+// Esta estructura lleva fundamentalmente la cuenta de las iteraciones que se va haciendo en el aprendizaje y la salida deseada (al ser una red supervisada)
+typedef struct bp_s {
 	unsigned int iteration;
-	double* desiredOutput;
-	double CostOfActivation_derivative;
+	Vector* desiredOutput;
 } Backpropagation;
 
-Backpropagation* new_Backpropagation();
+typedef struct {
+	Matrix* previousWeigthsGradient;
+} PreviousGradients;
 
-double updateCost(double* output, double* desiredOutput, double totalCost);
-double* updateParameters(double* weightsGradientMatrix, double* sumWeightsGradientMatrix, double* biasesGradient, double* sumBiasesGradient);
+Backpropagation* Backpropagation_new(size_t outputSize);
+
+void Backpropagation_delete(Backpropagation* self);
+
+double updateCost(Backpropagation* bp, Vector* output, Vector* desiredOutput, double totalCost);
+void updateParameters(Backpropagation* bp, struct n_layer* layer);
 
 #endif

@@ -4,10 +4,35 @@
 #include <stdlib.h>
 #include "pthread.h"
 #include "Random.h"
+#include "DetectMemoryLeaks.h"
 
 //#define PARALLEL_MULTIPLICATION
 //#define TRANSPOSED_MATRIX_HELP
 #define ADVANTAGING_WITH_CACHE_LINES
+
+#define NUM_THREADS 8
+
+#define WITH_THREADS
+
+typedef struct {
+    Matrix* result;
+    Matrix* mat1;
+    Matrix* mat2;
+    size_t pivot;
+    unsigned char firstPartition;
+} Partial_Multiplication_Args;
+
+typedef struct {
+    Matrix* result;
+    Matrix* mat1;
+    Matrix* mat2;
+    size_t start;
+    size_t end;
+} Partial_Sum_Args;
+
+void* partial_mul_Matrix(Partial_Multiplication_Args* args);
+void* matrix_sum_thread(Partial_Sum_Args* args);
+void matrix_sum_traditional(Matrix* res, Matrix* mat1, Matrix* mat2);
 
 Matrix_Position M_Pos(size_t i, size_t j)
 {
@@ -30,6 +55,17 @@ Matrix* Matrix_new(size_t rows, size_t columns)
     matrix->Buffer = buffer;
     matrix->rows = rows;
     matrix->columns = columns;
+
+    return matrix;
+}
+
+Matrix* Matrix_new_zero(size_t rows, size_t columns)
+{
+    size_t dim = rows * columns;
+    Matrix* matrix = Matrix_new(rows, columns);
+    ASSERT(matrix, MATRIX_NOT_CREATED_EXCEPTION);
+
+    memset(matrix->Buffer, 0, dim * sizeof(MAT_T));
 
     return matrix;
 }
@@ -195,6 +231,42 @@ Matrix Matrix_create_identity(size_t order)
     return new;
 }
 
+Matrix Matrix_create_random(Matrix_Datatype datatype, void* min, void* max, size_t rows, size_t columns)
+{
+    size_t sizeMatrix = rows * columns * sizeof(MAT_T);
+
+    Matrix mat;
+    Matrix* matrix = &mat;
+
+    matrix->Buffer = (MAT_T*)malloc(sizeMatrix);
+    ASSERT(matrix->Buffer, MEMORY_NOT_ASSIGNED_EXCEPTION);
+
+    size_t elementsQnty = rows * columns;
+
+    if (datatype == INTEGER_MATRIX)
+    {
+        int a = *((int*)min);
+        int b = *((int*)max);
+
+        for (size_t i = 0; i < elementsQnty; i++)
+            matrix->Buffer[i] = genRandomInt(a, b);
+        matrix->rows = rows;
+        matrix->columns = columns;
+    }
+    else if (datatype == REAL_MATRIX)
+    {
+        MAT_T a = *((MAT_T*)min);
+        MAT_T b = *((MAT_T*)max);
+
+        for (size_t i = 0; i < elementsQnty; i++)
+            matrix->Buffer[i] = genRandomDouble(a, b);
+        matrix->rows = rows;
+        matrix->columns = columns;
+    }
+
+    return *matrix;
+}
+
 Matrix* Matrix_new_duplicate(Matrix* matrix)
 {
     ASSERT(matrix, MEMORY_POINTING_TO_NOTHING);
@@ -248,12 +320,16 @@ Vector* Matrix_get_row(Matrix* mat, size_t row)
 
 void Matrix_delete(Matrix* matrix)
 {
-    ASSERT(matrix, MATRIX_NULL_PASSED_EXCEPTION);
+    if (matrix != NULL)
+    {
+        if(matrix->Buffer != NULL)
+            free(matrix->Buffer);
+        free(matrix);
+    }
+    else
+        free(matrix);
 
-    if(matrix->Buffer != NULL)
-        free(matrix->Buffer);
-
-    free(matrix);
+    matrix = NULL;
 }
 
 void Matrix_set(Matrix* matrix, Matrix_Position pos, MAT_T element)
@@ -276,14 +352,6 @@ MAT_T Matrix_get(Matrix* matrix, Matrix_Position pos)
     size_t index = pos.j + pos.i * matrix->columns;
     return matrix->Buffer[index];
 }
-
-typedef struct {
-    Matrix* result;
-    Matrix* mat1;
-    Matrix* mat2;
-    size_t pivot;
-    unsigned char firstPartition;
-} Partial_Multiplication_Args;
 
 // Función para la multiplicación parcial de la matriz para la implementación con dos hilos
 void* partial_mul_Matrix(Partial_Multiplication_Args* args)
@@ -323,9 +391,155 @@ void* partial_mul_Matrix(Partial_Multiplication_Args* args)
     return NULL;
 }
 
+void* matrix_sum_thread(Partial_Sum_Args* args) {
+
+    MAT_T* mat1 = args->mat1->Buffer;
+    MAT_T* mat2 = args->mat2->Buffer;
+    MAT_T* res = args->result->Buffer;
+    size_t start = args->start;
+    size_t end = args->end;
+
+    // Suma de las matrices
+    for (size_t i = start; i < end; i++)
+        *(res + i) = *(mat1 + i) + *(mat2 + i);
+
+    pthread_exit(NULL);
+
+    return NULL;
+}
+
+void matrix_sum_traditional(Matrix* res, Matrix* mat1, Matrix* mat2)
+{
+    MAT_T* buff1 = mat1->Buffer;
+    MAT_T* buff2 = mat2->Buffer;
+    MAT_T* buffRes = res->Buffer;
+
+    size_t sizeOfMatrices = mat1->rows * mat2->columns;
+
+    for (size_t i = 0; i < sizeOfMatrices; i++)
+        *(buffRes + i) = *(buff1 + i) + *(buff2 + i);
+}
+
 Matrix* Matrix_sum(Matrix* mat1, Matrix* mat2)
 {
-    return NULL;
+    ASSERT(mat1, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat2, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat1->Buffer, MEMORY_POINTING_TO_NOTHING);
+    ASSERT(mat2->Buffer, MEMORY_POINTING_TO_NOTHING);
+    ASSERT(mat1->rows == mat2->rows && mat1->columns == mat2->columns, MATRIX_INVALID_ADDITION);
+
+    size_t rows = mat1->rows;
+    size_t columns = mat1->columns;
+    size_t sizeOfMatrices = rows * columns;
+
+    Matrix* res = Matrix_new_null(rows, columns);
+
+#if defined WITH_THREADS
+
+    size_t elements_per_thread;
+
+    // La suma en paralelo solo vale la pena cuando hay una cantidad de datos gigante en la matriz
+    if (sizeOfMatrices > 25e6)
+        elements_per_thread = 0;
+    else
+        elements_per_thread = sizeOfMatrices / NUM_THREADS;
+
+    if (elements_per_thread)
+    {
+        pthread_t threads[NUM_THREADS];
+        Partial_Sum_Args thread_args[NUM_THREADS];
+
+        for (size_t i = 0; i < NUM_THREADS; i++)
+        {
+            size_t start = i * elements_per_thread;
+            size_t end = (i == NUM_THREADS - 1) ? sizeOfMatrices : (i + 1) * elements_per_thread;
+
+            thread_args[i].start = start;
+            thread_args[i].end = end;
+            thread_args[i].mat1 = mat1;
+            thread_args[i].mat2 = mat2;
+            thread_args[i].result = res;
+
+            pthread_create(&threads[i], NULL, matrix_sum_thread, (void*)&thread_args[i]);
+        }
+
+        for (size_t i = 0; i < NUM_THREADS; i++)
+            pthread_join(threads[i], NULL);
+    }
+    else
+        matrix_sum_traditional(res, mat1, mat2);
+
+#else
+
+    matrix_sum_traditional(res, mat1, mat2);
+
+#endif
+
+    return res;
+}
+
+void Matrix_sum_void(Matrix* mat1, Matrix* mat2)
+{
+    ASSERT(mat1, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat2, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat1->Buffer, MEMORY_POINTING_TO_NOTHING);
+    ASSERT(mat2->Buffer, MEMORY_POINTING_TO_NOTHING);
+    ASSERT(mat1->rows == mat2->rows && mat1->columns == mat2->columns, MATRIX_INVALID_ADDITION);
+
+#if defined WITH_THREADS
+
+    size_t rows = mat1->rows;
+    size_t columns = mat1->columns;
+    size_t sizeOfMatrices = rows * columns;
+
+    pthread_t threads[NUM_THREADS];
+    Partial_Sum_Args thread_args[NUM_THREADS];
+
+    size_t elements_per_thread;
+
+    // La suma en paralelo solo vale la pena cuando hay una cantidad de datos gigante en la matriz
+    if (sizeOfMatrices > 25e6)
+        elements_per_thread = 0;
+    else
+        elements_per_thread = sizeOfMatrices / NUM_THREADS;
+
+    if (elements_per_thread)
+    {
+        for (size_t i = 0; i < NUM_THREADS; i++)
+        {
+            size_t start = i * elements_per_thread;
+            size_t end = (i == NUM_THREADS - 1) ? sizeOfMatrices : (i + 1) * elements_per_thread;
+
+            thread_args[i].start = start;
+            thread_args[i].end = end;
+            thread_args[i].mat1 = mat1;
+            thread_args[i].mat2 = mat2;
+            thread_args[i].result = mat1;
+
+            pthread_create(&threads[i], NULL, matrix_sum_thread, (void*)&thread_args);
+        }
+
+        for (size_t i = 0; i < NUM_THREADS; i++)
+            pthread_join(threads[i], NULL);
+    }
+    else
+        matrix_sum_traditional(mat1, mat1, mat2);
+
+#else
+
+    matrix_sum_traditional(mat1, mat1, mat2);
+
+#endif
+}
+
+MAT_T Matrix_sum_element(Matrix* mat, Matrix_Position pos, MAT_T element)
+{
+    ASSERT(mat, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat->Buffer, MEMORY_POINTING_TO_NOTHING);
+
+    size_t index = pos.j + pos.i * mat->columns;
+    mat->Buffer[index] += element;
+    return mat->Buffer[index];
 }
 
 void Matrix_set_row(Matrix* matrix, size_t row_index, MAT_T* row, size_t size)
@@ -336,6 +550,27 @@ void Matrix_set_row(Matrix* matrix, size_t row_index, MAT_T* row, size_t size)
     ASSERT(size <= matrix->columns, MATRIX_OUT_OF_BOUNDS_EXCEPTION);
 
     memmove(matrix->Buffer + row_index, row, size * sizeof(MAT_T));
+}
+
+void Matrix_set_another_matrix(Matrix* dest, Matrix* src)
+{
+    ASSERT(dest, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(src, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(dest->Buffer, MEMORY_POINTING_TO_NOTHING);
+    ASSERT(src->Buffer, MEMORY_POINTING_TO_NOTHING);
+
+    dest->rows = src->rows;
+    dest->columns = src->columns;
+
+    if (dest->rows != src->rows || dest->columns != src->columns)
+    {
+        MAT_T* tmp = NULL;
+        while(tmp == NULL)
+            tmp = (MAT_T*)realloc(dest->Buffer, src->rows * src->columns);
+        dest->Buffer = tmp;
+    }
+
+    memmove(dest->Buffer, src->Buffer, src->rows * src->columns);
 }
 
 Matrix* Matrix_mul(Matrix* mat1, Matrix* mat2)
@@ -402,24 +637,46 @@ Matrix* Matrix_mul(Matrix* mat1, Matrix* mat2)
             Matrix_set(result, M_Pos(i, j), sum);
         }
     }
-#elif defined ADVANTAGING_WITH_CACHE_LINES
-    //for (size_t i = 0; i < mat1->rows; i += SM)
-    //{
-    //    for (size_t j = 0; j < mat2->columns; j += SM)
-    //    {
-    //        for (size_t k = 0; k < mat2->rows; k += SM)
-    //        {
-    //            Array* rres = Matrix_get_row(result, i);
-    //            Array* rmul1 = Matrix_get_row(mat1, i);
-    //        }
-    //    }
-    //}
 #else
     partial_mul_Matrix(&args1);
     partial_mul_Matrix(&args2);
 #endif
 
     return result;
+}
+
+Matrix* Matrix_product_with_scalar(Matrix* mat, MAT_T scalar)
+{
+    ASSERT(mat, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat->Buffer, MEMORY_POINTING_TO_NOTHING);
+
+    Matrix* res = Matrix_new_copy(mat);
+
+    for (size_t i = 0; i < mat->rows; i++)
+    {
+        for (size_t j = 0; j < mat->columns; j++)
+        {
+            MAT_T product = Matrix_get(mat, M_Pos(i, j)) * scalar;
+            Matrix_set(res, M_Pos(i, j), product);
+        }
+    }
+
+    return res;
+}
+
+void Matrix_product_with_scalar_void(Matrix* mat, MAT_T scalar)
+{
+    ASSERT(mat, MATRIX_NULL_PASSED_EXCEPTION);
+    ASSERT(mat->Buffer, MEMORY_POINTING_TO_NOTHING);
+
+    for (size_t i = 0; i < mat->rows; i++)
+    {
+        for (size_t j = 0; j < mat->columns; j++)
+        {
+            MAT_T product = Matrix_get(mat, M_Pos(i, j)) * scalar;
+            Matrix_set(mat, M_Pos(i, j), product);
+        }
+    }
 }
 
 Matrix* Matrix_transpose(Matrix* mat)

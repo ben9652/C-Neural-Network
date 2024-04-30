@@ -14,13 +14,22 @@ enum func_to_use {
 	TANH
 };
 
+typedef union {
+	Hardlim h;
+	Hardlims hs;
+	Linear l;
+	Tanh t;
+	Sigmoid s;
+} Functions;
+
 typedef struct act_f {
-	char func_used[2];
+	enum func_to_use func_used;
+	Functions* function;
 } ActivationFunction;
 
-ActivationFunction* new_ActivationFunction1(enum func_to_use function, double param);
-ActivationFunction* new_ActivationFunction2(enum func_to_use function, double param, double rightShift);
-void delete_ActivationFunction(ActivationFunction* self);
+ActivationFunction* ActivationFunction_new(enum func_to_use function, double param, double rightShift);
+ActivationFunction* ActivationFunction_new_copy(ActivationFunction* other);
+void ActivationFunction_delete(ActivationFunction* self);
 
 double calc(ActivationFunction* self, double x);
 double deriv(ActivationFunction* self, double x);

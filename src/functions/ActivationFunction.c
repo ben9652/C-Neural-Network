@@ -3,105 +3,88 @@
 #include <string.h>
 #include "error_management.h"
 
-unsigned char private_members;
-
-/* Funciones para obtener los atributos privados */
-
-enum func_to_use getFuncUsed(ActivationFunction* af);
-
-/* Miembros privados */
-
-enum func_to_use function;
-typedef union {
-	Hardlim h;
-	Hardlims hs;
-	Linear l;
-	Tanh t;
-} Functions;
-
 // Constructor
-ActivationFunction* new_ActivationFunction1(enum func_to_use function, double param)
+ActivationFunction* ActivationFunction_new(enum func_to_use function, double param, double rightShift)
 {
-	ASSERT(function != SIGMOID, FUNCTION_ASSIGNING_EXCEPTION);
+	ActivationFunction* af = (ActivationFunction*)malloc(sizeof(ActivationFunction));
+	ASSERT(af, MEMORY_NOT_ASSIGNED_EXCEPTION);
+	af->func_used = function;
 
-	size_t size_of_struct = sizeof(ActivationFunction);
+	Functions* func_to_use = (Functions*)malloc(sizeof(Functions));
+	af->function = func_to_use;
 
-	size_t size_of_privMember1 = sizeof(enum func_to_use);
-	size_t size_of_privMember2 = sizeof(Functions);
-
-	size_t size_of_private =  size_of_privMember1 + size_of_privMember2;
-
-	ActivationFunction* af = malloc(size_of_struct + size_of_private);
-
-	if (af)
+	switch (function)
 	{
-		enum func_to_use* p_Func = (enum func_to_use*)(af + 1);
-		*p_Func = function;
-
-		Functions* p_Actual_Func = (Functions*)(af + 3);
-
-		switch (function)
-		{
-		case HARDLIM:
-			strcpy_s(af->func_used, 2, "h");
-			p_Actual_Func->h.a = param;
-			break;
-		case HARDLIMS:
-			strcpy_s(af->func_used, 2, "H");
-			p_Actual_Func->hs.a = param;
-			break;
-		case LINEAR:
-			strcpy_s(af->func_used, 2, "l");
-			p_Actual_Func->l.a = param;
-			break;
-		case TANH:
-			strcpy_s(af->func_used, 2, "t");
-			p_Actual_Func->t.a = param;
-			break;
-		}
+	case HARDLIM:
+		Hardlim h = { param };
+		memmove(func_to_use, &h, sizeof(h));
+		break;
+	case HARDLIMS:
+		Hardlims hs = { param };
+		memmove(func_to_use, &hs, sizeof(hs));
+		break;
+	case LINEAR:
+		Linear lr = { param };
+		memmove(func_to_use, &lr, sizeof(lr));
+		break;
+	case TANH:
+		Tanh tanh = { param };
+		memmove(func_to_use, &tanh, sizeof(hs));
+		break;
+	case SIGMOID:
+		Sigmoid s = { param, rightShift };
+		memmove(func_to_use, &s, sizeof(s));
+		break;
 	}
 
 	return af;
 }
 
-ActivationFunction* new_ActivationFunction2(enum func_to_use function, double param, double rightShift)
+ActivationFunction* ActivationFunction_new_copy(ActivationFunction* other)
 {
-	ASSERT(function == SIGMOID, FUNCTION_ASSIGNING_EXCEPTION);
+	ASSERT(other, MEMORY_POINTING_TO_NOTHING);
+	ActivationFunction* newActFn;
 
-	size_t size_of_struct = sizeof(ActivationFunction);
-
-	size_t size_of_privMember1 = sizeof(enum func_to_use);
-	size_t size_of_privMember2 = sizeof(Sigmoid);
-
-	size_t size_of_private = size_of_privMember1 + size_of_privMember2;
-
-	ActivationFunction* af = malloc(size_of_struct + size_of_private);
-
-	if (af)
+	double param = 0.0;
+	double right_shift = 0.0;
+	switch (other->func_used)
 	{
-		enum func_to_use* p_Func = (enum func_to_use*)(af + 1);
-		*p_Func = function;
-
-		Sigmoid* p_Actual_Func = (Sigmoid*)(af + 3);
-
-		strcpy_s(af->func_used, 2, "s");
-		p_Actual_Func->a = param;
-		p_Actual_Func->b = rightShift;
+	case HARDLIM:
+		
+	case HARDLIMS:
+		param = other->function->h.a;
+		break;
+	case LINEAR:
+		param = other->function->l.a;
+		break;
+	case TANH:
+		param = other->function->t.a;
+		break;
+	case SIGMOID:
+		param = other->function->s.a;
+		right_shift = other->function->s.b;
+		break;
 	}
 
-	return af;
+	newActFn = ActivationFunction_new(other->func_used, param, right_shift);
+
+	return newActFn;
 }
 
-void delete_ActivationFunction(ActivationFunction* self)
+void ActivationFunction_delete(ActivationFunction* self)
 {
+	ASSERT(self, MEMORY_POINTING_TO_NOTHING);
+	ASSERT(self->function, MEMORY_POINTING_TO_NOTHING);
+	
+	free(self->function);
 	free(self);
 }
 
 double calc(ActivationFunction* self, double x)
 {
-	enum func_to_use function = getFuncUsed(self);
+	enum func_to_use function = self->func_used;
 
-	void* func_pointer = self + 3;
+	Functions* func_pointer = self->function;
 
 	switch (function)
 	{
@@ -116,17 +99,31 @@ double calc(ActivationFunction* self, double x)
 	case TANH:
 		return calc_Tanh((Tanh*)func_pointer, x);
 	default:
+		ASSERT(0, FUNCTION_ASSIGNING_EXCEPTION);
 		return 0.0;
 	}
 }
 
 double deriv(ActivationFunction* self, double x)
 {
-	return 0.0;
-}
+	enum func_to_use function = self->func_used;
 
-enum func_to_use getFuncUsed(ActivationFunction* af)
-{
-	enum func_to_use* function = (enum func_to_use*)(af + 1);
-	return *function;
+	Functions* func_pointer = self->function;
+
+	switch (function)
+	{
+	case HARDLIM:
+		return deriv_Hardlim((Hardlim*)func_pointer, x);
+	case HARDLIMS:
+		return deriv_Hardlims((Hardlims*)func_pointer, x);
+	case LINEAR:
+		return deriv_Linear((Linear*)func_pointer, x);
+	case SIGMOID:
+		return deriv_Sigmoid((Sigmoid*)func_pointer, x);
+	case TANH:
+		return deriv_Tanh((Tanh*)func_pointer, x);
+	default:
+		ASSERT(0, FUNCTION_ASSIGNING_EXCEPTION);
+		return 0.0;
+	}
 }
