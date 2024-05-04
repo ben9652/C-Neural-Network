@@ -1,5 +1,6 @@
 #ifndef _VECTORS_POINTERS
 #define _VECTORS_POINTERS
+#include <stdlib.h>
 
 typedef struct
 {

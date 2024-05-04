@@ -81,6 +81,18 @@ void ErrorLog(int code, const char* file, int line)
 	case IMAGE_FAILED_CONVERTING_IMAGE:
 		printf("Error converting image: %s\n", SDL_GetError());
 		break;
+	case GLFW_PLATFORM_ALREADY_INIT:
+		printf("Already initialized a platform backend!");
+		break;
+	case GLFW_WND_PROC_NOT_NULL:
+		printf("GLFW window process not null");
+		break;
+	case OPENGL3_NO_RENDERER_BACKEND:
+		printf("No renderer backend to shutdown, or already shutdown?");
+		break;
+	case OPENGL3_NOT_INIT:
+		printf("Did you call ImGui_ImplOpenGL3_Init()?");
+		break;
 	}
 
 #ifndef _DEBUG

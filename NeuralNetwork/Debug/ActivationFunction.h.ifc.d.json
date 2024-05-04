@@ -1,0 +1,16 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\users\\ben96\\source\\repos\\c-neural-network\\libraries\\activationfunction.h",
+        "ProvidedModule": "",
+        "Includes": [
+            "c:\\users\\ben96\\source\\repos\\c-neural-network\\libraries\\hardlim.h",
+            "c:\\users\\ben96\\source\\repos\\c-neural-network\\libraries\\hardlims.h",
+            "c:\\users\\ben96\\source\\repos\\c-neural-network\\libraries\\linear.h",
+            "c:\\users\\ben96\\source\\repos\\c-neural-network\\libraries\\sigmoid.h",
+            "c:\\users\\ben96\\source\\repos\\c-neural-network\\libraries\\tanh.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

@@ -10,7 +10,8 @@
 #include "StringVec.h"
 #include <stdio.h>
 #include <math.h>
-#include "Image.h"
+#include "ConsolePositions.h"
+//#include "Image.h"
 
 #define WRITE_ITERATION 10000
 #define TEST_NEURAL_NETWORK

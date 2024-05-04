@@ -8,6 +8,7 @@
 #include "DetectMemoryLeaks.h"
 
 #define SEPARATOR "\n\t\t-------------------- O --------------------\n\n"
+#define TIME_TO_PRINT 50000
 
 static unsigned char firstTimeWriting = 1;
 static size_t counterWritingOverflow = 0;
@@ -19,6 +20,7 @@ void printParameters(NeuralNetwork* nn);
 void calcActivations(NeuralNetwork* nn);
 String calcCost(NeuralNetwork* nn, Vector* desiredOutput, unsigned char writeResult);
 void writeIterationResult(NeuralNetwork* nn, const char* filename, const String* result);
+void printIterationResult(NeuralNetwork* nn);
 
 NeuralNetwork* NeuralNetwork_new(const char* name, size_t inputsNumber, size_t outputsNumber, Vector* hiddenNeuronsNumber, VectorPointers* hiddenActFn, ActivationFunction* outputActFn, unsigned char extract_from_file)
 {
@@ -117,7 +119,22 @@ NeuralNetwork* NeuralNetwork_new(const char* name, size_t inputsNumber, size_t o
 
 	String_delete_stacked(&fileNameString);
 
+	CursorPosition* cursorEpoch = CursorPosition_new();
+	newNN->cursorEpoch = cursorEpoch;
+	
+	CursorPosition* cursorCost = CursorPosition_new();
+	newNN->cursorCost = cursorCost;
+
 	puts("Neural network created!\n");
+	printf("Neural network name: %s\n", name);
+
+	printf("Iteration: ");
+	UpdateCursorPosition(cursorEpoch);
+	printf("\nAverage cost: ");
+	UpdateCursorPosition(cursorCost);
+	printf("\n\n");
+	
+	newNN->counterForPrinting = 0;
 
 	return newNN;
 }
@@ -134,6 +151,8 @@ void NeuralNetwork_delete(NeuralNetwork* nn)
 	VectorPointers_delete(nn->hiddenLayers);
 	Layer_delete(nn->outputLayer);
 	Vector_delete(nn->output);
+	CursorPosition_delete(nn->cursorEpoch);
+	CursorPosition_delete(nn->cursorCost);
 
 	free(nn);
 }
@@ -162,6 +181,8 @@ void NeuralNetwork_learn(NeuralNetwork* nn, Vector* input, Vector* desiredOutput
 
 		String_delete_stacked(&outputFile);
 	}
+
+	printIterationResult(nn);
 
 	String_delete_stacked(&train_result);
 }
@@ -467,4 +488,23 @@ void writeIterationResult(NeuralNetwork* nn, const char* filename, const String*
 	String_delete_stacked(&full_path);
 
 	fclose(fd);
+}
+
+void printIterationResult(NeuralNetwork* nn)
+{
+	if (nn->counterForPrinting == 0)
+	{
+		COORD coordsEpoch = GetCursorPosition(nn->cursorEpoch);
+		COORD coordsCost = GetCursorPosition(nn->cursorCost);
+
+		PositionCursor(nn->cursorEpoch, coordsEpoch);
+		printf("%u", nn->algorithm->iteration);
+
+		PositionCursor(nn->cursorCost, coordsCost);
+		printf("%.17lf", nn->averageCost);
+
+		nn->counterForPrinting = TIME_TO_PRINT - 1;
+	}
+	else
+		nn->counterForPrinting--;
 }
