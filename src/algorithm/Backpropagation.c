@@ -106,8 +106,9 @@ static double dC_da(Backpropagation* bp, size_t neuron, Layer* layer)
 
     double diffBetweenOutputAndDesiredOutput = actualOutput - desiredOutput;
     double applyAverage = 1.0 / layer->neuronsInLayer;
-
+    
     if (layer->layerType == OUTPUT_LAYER)
+        // La derivada del costo respecto a la activación de la última capa no es más que la derivada del error cuadrático medio. La diferencia entre la activación de la neurona de la última capa y la salida deseada en esta neurona es la que se calcula en el error cuadrático medio.
         return applyAverage * 2 * diffBetweenOutputAndDesiredOutput;
     else
     {

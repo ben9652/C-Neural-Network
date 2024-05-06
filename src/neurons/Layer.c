@@ -160,7 +160,7 @@ Vector applyFunctionToVector(ActivationFunction* af, Vector* vector)
 		VEC_T computedFunction = calc(af, Vector_get(vector, i));
 		Vector_set(&appliedFunction, i, computedFunction);
 	}
-
+	
 	return appliedFunction;
 }
 

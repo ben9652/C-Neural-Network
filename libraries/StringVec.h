@@ -38,20 +38,26 @@ String String_create_copy(const String* newString);
 /// <param name="val">Número a agregar</param>
 void String_add(String* const self, const char* string);
 
+void String_add_char(String* const self, char c);
+void String_backspace(String* const self);
+
 void String_emplace(String* const self, int strings, ...);
 
-void String_delete(String* const self);
-void String_delete_stacked(String* const self);
+void String_delete(String* self);
+void String_delete_stacked(String* self);
 
 inline char String_get(const String* self, size_t index);
 inline void String_set(String* const self, size_t index, char val);
+void String_clear(String* const self);
 void String_set_another_String(String* const dest, const String* src);
 
 String* const String_int_to_string(size_t num);
 String String_int_to_string_stacked(size_t num);
+void String_set_int_to_string(String* const self, size_t num);
 
 String* const String_double_to_string(double num);
 String String_double_to_string_stacked(double num);
+void String_set_double_to_string(String* const self, double num);
 
 void String_print(const String * str);
 

@@ -125,23 +125,25 @@ VectorPointers VectorPointers_create_init(void(*deleter)(void* ptr_to_struct), s
 
 void VectorPointers_delete(VectorPointers* self)
 {
-	ASSERT(self, ARRAY_NULL_PASSED_EXCEPTION);
-	ASSERT(self->Buffer, MEMORY_POINTING_TO_NOTHING);
-
-	for (size_t i = 0; i < self->size; i++)
+	if(self != NULL)
 	{
-		void* pointer = self->Buffer[i];
+		ASSERT(self->Buffer, MEMORY_POINTING_TO_NOTHING);
 
-		if (self->deleter != NULL)
-			self->deleter(pointer);
-		else
-			free(pointer);
+		for (size_t i = 0; i < self->size; i++)
+		{
+			void* pointer = self->Buffer[i];
+
+			if (self->deleter != NULL)
+				self->deleter(pointer);
+			else
+				free(pointer);
+		}
+
+		free(self->Buffer);
+		self->Buffer = NULL;
+		free(self);
+		self = NULL;
 	}
-
-	free(self->Buffer);
-	self->Buffer = NULL;
-	free(self);
-	self = NULL;
 }
 
 void VectorPointers_delete_stacked(VectorPointers* self)
@@ -211,4 +213,16 @@ void* VectorPointers_get(VectorPointers* self, size_t index)
 	ASSERT(index < self->size, ARRAY_OUT_OF_BOUNDS_EXCEPTION);
 
 	return self->Buffer[index];
+}
+
+void VectorPointers_set(VectorPointers* self, size_t index, void* pointer)
+{
+	ASSERT(index < self->size, ARRAY_OUT_OF_BOUNDS_EXCEPTION);
+
+	if (self->deleter)
+		self->deleter(self->Buffer[index]);
+	else
+		free(self->Buffer[index]);
+
+	self->Buffer[index] = pointer;
 }

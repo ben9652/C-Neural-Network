@@ -88,4 +88,11 @@ exit(1);
 		ErrorLog(code, __FILENAME__, __LINE__);\
 		BREAK_EXECUTION();\
 	}
+
+#define ASSERT_STR(x, str)\
+	if(!(x))\
+	{\
+		printf("%s", str);\
+		BREAK_EXECUTION();\
+	}
 #endif

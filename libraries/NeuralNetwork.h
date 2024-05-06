@@ -8,7 +8,7 @@
 #include "data_management.h"
 #include "ActivationFunction.h"
 #include "VectorPointers.h"
-#include "ConsolePositions.h"
+#include "StringVec.h"
 
 typedef struct
 {
@@ -29,9 +29,8 @@ typedef struct
 
 	DataManagement* parameters_management;
 
-	CursorPosition* cursorEpoch;
-	CursorPosition* cursorCost;
-	unsigned int counterForPrinting;
+	String* stringIteration;
+	String* stringCost;
 } NeuralNetwork;
 
 NeuralNetwork* NeuralNetwork_new(const char* name, size_t inputsNumber, size_t outputsNumber, Vector* hiddenNeuronsNumber, VectorPointers* hiddenActFn, ActivationFunction* outputActFn, unsigned char extract_from_file);

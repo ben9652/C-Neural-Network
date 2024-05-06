@@ -10,32 +10,73 @@
 #include "StringVec.h"
 #include <stdio.h>
 #include <math.h>
-#include "ConsolePositions.h"
+#include "GUI.h"
+#include <pthread.h>
+#include "SharedVariables.h"
+#include "ThreadsManagement.h"
+#include <Windows.h>
 //#include "Image.h"
 
 #define WRITE_ITERATION 10000
+#define NEURAL_NETWORK_TRAINING_INPUT 2
 #define TEST_NEURAL_NETWORK
 
-const char* path = "data/";
-const char* filename = "inputData.txt";
+struct Window* wnd_hnd;
+unsigned char neural_network_learned = 0;
 
 float getMatrixAdditionTime(Matrix* m1, Matrix* m2);
 float getMatrixMultiplicationTime(Matrix* m1, Matrix* m2);
 float getMatrixVectorProductTime(Matrix* mat, Vector* vec);
 void miscellaneousTests();
-float neuralNetworkTest();
+void* neuralNetworkTest(Vector* const input);
+int Main();
 
-int main()
+sem_t NN_Thread_Management;
+
+#ifdef _DIST
+    int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
+    {
+        return Main();
+    }
+#else
+    int main()
+    {
+        return Main();
+    }
+#endif // _DIST
+
+int Main()
 {
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-    //_CrtSetBreakAlloc(294);
+    //_CrtSetBreakAlloc(134);
 
-    float taken_time = neuralNetworkTest();
+    wnd_hnd = GUI_InitWindow(740, 480);
+    if (wnd_hnd == NULL)
+        return 1;
 
-#ifndef TEST_NEURAL_NETWORK
-    printf("Taken time: %f milliseconds\n", taken_time);
-    fgetc(stdin);
+    // Configuro un semáforo para parar el proceso de testeo de la red neuronal hasta que se ingresen los parámetros de entrada del test
+    sem_init(&NN_Thread_Management, 0, 0);
+
+    VectorPointers* labelInputs = NULL;
+
+#ifdef TEST_NEURAL_NETWORK
+    labelInputs = VectorPointers_new_init(String_delete, NEURAL_NETWORK_TRAINING_INPUT,
+        String_new_emplace("Learning rate: "),
+        String_new_emplace("Minimum neural network\'s cost to reach: ")
+    );
 #endif
+
+    Vector* const inputVector = Vector_new_container(NEURAL_NETWORK_TRAINING_INPUT);
+
+    pthread_t nn_thread;
+    pthread_create(&nn_thread, NULL, neuralNetworkTest, (Vector* const)inputVector);
+
+    GUIloop(labelInputs, inputVector);
+    pthread_cancel(nn_thread);
+
+    if(!neural_network_learned)
+        VectorPointers_delete(labelInputs);
+    Vector_delete(inputVector);
 
     return 0;
 }
@@ -83,19 +124,17 @@ void miscellaneousTests()
     Vector_delete_stacked(&v);
 }
 
-float neuralNetworkTest()
+void* neuralNetworkTest(Vector* const input)
 {
-#ifdef TEST_NEURAL_NETWORK
     double learningRate;
     double cost;
-    printf("Enter the learning rate you want for the neural network training: ");
-    int error = scanf_s("%lf", &learningRate);
-
-    printf("Enter the cost you want for the network: ");
-    error = scanf_s("%lf", &cost);
+#ifdef TEST_NEURAL_NETWORK
+    sem_wait(&NN_Thread_Management);
+    learningRate = Vector_get(input, 0);
+    cost = Vector_get(input, 1);
 #else
-    double learningRate = 0.5;
-    double cost = 0.01;
+    learningRate = 0.5;
+    cost = 0.01;
 #endif
     
     const char* neuralNetwork_Name = "XOR";
@@ -136,6 +175,7 @@ float neuralNetworkTest()
         desiredOutput4
     );
 
+#ifdef TEST_NEURAL_NETWORK
     init_time_measurement();
     
     size_t counter = 0;
@@ -166,7 +206,6 @@ float neuralNetworkTest()
     finalize_time_measurement();
 
     float taken_time = get_elapsed_time(MEASURE_MILLISECONDS);
-#ifdef TEST_NEURAL_NETWORK
     float fSeconds = taken_time / 1000;
 
     float fMinutes = fSeconds / 60;
@@ -218,6 +257,8 @@ float neuralNetworkTest()
     fclose(fd);
 
     String_delete(strToWrite);
+#else
+    NeuralNetwork_learn(xorNeuralNetwork, input1, desiredOutput1, learningRate, 1);
 #endif
     NeuralNetwork_delete(xorNeuralNetwork);
 
@@ -227,5 +268,12 @@ float neuralNetworkTest()
     VectorPointers_delete(inputs);
     VectorPointers_delete(desiredOutputs);
 
-    return taken_time;
+#ifdef TEST_NEURAL_NETWORK
+    neural_network_learned = 1;
+    GUI_AddNewLine();
+    GUI_AddWordNewLine(String_new_emplace("The neural network learned until the specified cost!"));
+    GUI_AddWordNewLine(String_new_emplace("ENTER to exit..."));
+#endif
+
+    return NULL;
 }

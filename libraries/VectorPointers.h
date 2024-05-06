@@ -27,4 +27,12 @@ void VectorPointers_emplace(VectorPointers* self, size_t quantity, ...);
 
 void* VectorPointers_get(VectorPointers* self, size_t index);
 
+/// <summary>
+/// Elimina el objeto al cual apunta el puntero en la posición index, y lo reemplaza el puntero pointer.
+/// </summary>
+/// <param name="self"></param>
+/// <param name="index"></param>
+/// <param name="pointer"></param>
+void VectorPointers_set(VectorPointers* self, size_t index, void* pointer);
+
 #endif
