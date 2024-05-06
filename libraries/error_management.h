@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <Windows.h>
 
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
@@ -58,41 +59,47 @@
 #define N_NETWORK_MUST_HAVE_NAME		N_NETWORK_EXCEPTIONS | 0x00
 #define N_NETWORK_DESIRED_OUTPUT_WRONG	N_NETWORK_EXCEPTIONS | 0x01
 
-// Tipos de excepciones para imágenes
-#define IMAGE_SDL_ERROR_INIT			IMAGE_EXCEPTIONS | 0x00
-#define IMAGE_SDL_IMAGE_ERROR_INIT		IMAGE_EXCEPTIONS | 0x01
-#define IMAGE_FAILED_LOAD_IMAGE			IMAGE_EXCEPTIONS | 0x02
-#define IMAGE_FAILED_CONVERTING_IMAGE	IMAGE_EXCEPTIONS | 0x03
+void ErrorLog(int code);
 
-// Tipos de excepciones para GLFW
-#define GLFW_PLATFORM_ALREADY_INIT		GLFW_EXCEPTIONS | 0x00
-#define GLFW_WND_PROC_NOT_NULL			GLFW_EXCEPTIONS | 0x01
+static size_t ptNumCharsConv;
+static wchar_t wStr[200];
+static LPWSTR ptr;
 
-// Tipos de excepciones para ImplOpenGL3
-#define OPENGL3_NO_RENDERER_BACKEND		IMPL_OPENGL3_EXCEPTIONS | 0x00
-#define OPENGL3_NOT_INIT				IMPL_OPENGL3_EXCEPTIONS | 0x01
-
-void ErrorLog(int code, const char* file, int line);
+#ifndef _DIST
+#define PRINT_ERR(str) puts(str);
+#else
+#define PRINT_ERR(str)\
+mbstowcs_s(&ptNumCharsConv, wStr, 200, str, strlen(str) + 1);\
+ptr = wStr;\
+MessageBox(NULL, ptr, u"Error", MB_ICONERROR | MB_OK);
+#endif // !_DIST
 
 #ifdef _DEBUG
 #define BREAK_EXECUTION() __debugbreak();
-#else
+#elif NDEBUG
 #define BREAK_EXECUTION()\
+Beep(1000, 1000);\
+printf("\n\nError source: %s (line %d)\n", __FILENAME__, __LINE__);\
+puts("The program will be exit...");\
 fgetc(stdin);\
 exit(1);
+#else
+#define BREAK_EXECUTION()\
+exit(EXIT_FAILURE);
 #endif
 
 #define ASSERT(x, code)\
 	if(!(x))\
 	{\
-		ErrorLog(code, __FILENAME__, __LINE__);\
+		ErrorLog(code);\
 		BREAK_EXECUTION();\
 	}
 
 #define ASSERT_STR(x, str)\
 	if(!(x))\
 	{\
-		printf("%s", str);\
+		PRINT_ERR(str);\
 		BREAK_EXECUTION();\
 	}
-#endif
+
+#endif	// _DEBUG

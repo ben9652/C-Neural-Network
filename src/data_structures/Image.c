@@ -20,23 +20,28 @@ Image* Image_new(const char* path)
     // Inicializar SDL
     String* errStr = String_new_container(10);
 
-    ASSERT(SDL_Init(SDL_INIT_VIDEO) == 0, IMAGE_SDL_ERROR_INIT);
-    ASSERT((IMG_Init(IMG_INIT_JPG) & IMG_INIT_JPG) == IMG_INIT_JPG, IMAGE_SDL_IMAGE_ERROR_INIT);
+    String_emplace(errStr, 2, "Error initializing SDL: ", SDL_GetError());
+    ASSERT_STR(SDL_Init(SDL_INIT_VIDEO) == 0, errStr->Buffer);
+
+    String_clear(errStr);
+    String_emplace(errStr, 2, "Error initializing SDL_image: ", IMG_GetError());
+    ASSERT_STR((IMG_Init(IMG_INIT_JPG) & IMG_INIT_JPG) == IMG_INIT_JPG, errStr->Buffer);
 
     Image* newImg = (Image*)malloc(sizeof(Image));
     ASSERT(newImg, MEMORY_NOT_ASSIGNED_EXCEPTION);
 
     // Cargar imagen
     SDL_Surface* image = IMG_Load(path);
-    ASSERT(image, IMAGE_FAILED_LOAD_IMAGE);
+
+    String_clear(errStr);
+    String_emplace(errStr, 2, "Error loading image: ", SDL_GetError());
+    ASSERT_STR(image, errStr->Buffer);
 
     SDL_Surface* converted_img = SDL_ConvertSurfaceFormat(image, SDL_PIXELFORMAT_RGBA32, 0);
-    if (converted_img == NULL) {
-        printf("Error al convertir la imagen: %s\n", SDL_GetError());
-        SDL_FreeSurface(image);
-        SDL_Quit();
-        exit(1);
-    }
+
+    String_clear(errStr);
+    String_emplace(errStr, 2, "Error converting image: ", SDL_GetError());
+    ASSERT_STR(converted_img != NULL, errStr->Buffer);
 
     newImg->pixels = VectorPointers_new_init_size(NULL, image->h * image->w);
     ASSERT(newImg->pixels, MEMORY_NOT_ASSIGNED_EXCEPTION);

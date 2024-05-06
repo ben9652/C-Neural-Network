@@ -28,12 +28,13 @@ struct Window* GUI_InitWindow(int width, int height)
     ASSERT(TTF_Init() != -1, 0);
 
     TTF_Font* font = TTF_OpenFont("arial.ttf", 24);
-    ASSERT(font != NULL, 0);
+    ASSERT_STR(font != NULL, TTF_GetError());
 
     // Inicializar SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL no pudo inicializarse! SDL_Error: %s\n", SDL_GetError());
-        ASSERT(0, 0);
+        String error = String_create_emplace("SDL couldn't be initialized! SDL Error: ");
+        String_add(&error, SDL_GetError());
+        ASSERT_STR(0, error.Buffer);
     }
 
     // Crear ventana
