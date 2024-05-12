@@ -45,9 +45,6 @@ typedef struct n_layer {
 
 	ActivationFunction* actFunction;
 
-	struct n_layer* prevLayer;
-	struct n_layer* nextLayer;
-
 	/*
 		Entrada que tiene la capa.
 		Realmente serían las activaciones de la capa anterior para las capas ocultas y la final, y la entrada de la red neuronal para la capa de entrada.
@@ -136,7 +133,5 @@ Layer* Layer_new_4(Layer_Type type, size_t neuronsInLayer, ActivationFunction* a
 void Layer_delete(Layer* self);
 
 void Layer_outputCalculation(Layer* self);
-
-void Layer_learn(Layer* self, struct bp_s* bp, double learningRate);
 
 #endif

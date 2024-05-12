@@ -426,7 +426,7 @@ Matrix* Matrix_sum(Matrix* mat1, Matrix* mat2)
     ASSERT(mat2, MATRIX_NULL_PASSED_EXCEPTION);
     ASSERT(mat1->Buffer, MEMORY_POINTING_TO_NOTHING);
     ASSERT(mat2->Buffer, MEMORY_POINTING_TO_NOTHING);
-    ASSERT(mat1->rows == mat2->rows && mat1->columns == mat2->columns, MATRIX_INVALID_ADDITION);
+    ASSERT(mat1->rows == mat2->rows && mat1->columns == mat2->columns, MATRIX_INVALID_DIMS_EXCEPTION);
 
     size_t rows = mat1->rows;
     size_t columns = mat1->columns;
@@ -484,7 +484,7 @@ void Matrix_sum_void(Matrix* mat1, Matrix* mat2)
     ASSERT(mat2, MATRIX_NULL_PASSED_EXCEPTION);
     ASSERT(mat1->Buffer, MEMORY_POINTING_TO_NOTHING);
     ASSERT(mat2->Buffer, MEMORY_POINTING_TO_NOTHING);
-    ASSERT(mat1->rows == mat2->rows && mat1->columns == mat2->columns, MATRIX_INVALID_ADDITION);
+    ASSERT(mat1->rows == mat2->rows && mat1->columns == mat2->columns, MATRIX_INVALID_DIMS_EXCEPTION);
 
 #if defined WITH_THREADS
 
@@ -580,7 +580,7 @@ Matrix* Matrix_mul(Matrix* mat1, Matrix* mat2)
     ASSERT(mat1->Buffer, MEMORY_POINTING_TO_NOTHING);
     ASSERT(mat2->Buffer, MEMORY_POINTING_TO_NOTHING);
 
-    ASSERT(mat1->columns == mat2->rows, MATRIX_INVALID_MULTIPLICATION);
+    ASSERT(mat1->columns == mat2->rows, MATRIX_INVALID_DIMS_EXCEPTION);
 
     size_t res_rows = mat1->rows;
     size_t res_columns = mat2->columns;

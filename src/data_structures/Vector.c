@@ -381,7 +381,6 @@ void Vector_set_another_vector(Vector* dest, Vector* src)
 	ASSERT(src, ARRAY_NULL_PASSED_EXCEPTION);
 	ASSERT(dest->Buffer, MEMORY_POINTING_TO_NOTHING);
 	ASSERT(src->Buffer, MEMORY_POINTING_TO_NOTHING);
-	ASSERT(dest->size == src->size, ARRAY_INVALID_DIMS_EXCEPTION);
 
 	dest->capacity_in_bytes = src->capacity_in_bytes;
 
@@ -589,7 +588,7 @@ Vector* Vector_mat_vec_product(struct mat* mat, Vector* v)
 	ASSERT(mat, MATRIX_NULL_PASSED_EXCEPTION);
 	ASSERT(mat->Buffer, MEMORY_POINTING_TO_NOTHING);
 	ASSERT(v->Buffer, MEMORY_POINTING_TO_NOTHING);
-	ASSERT(mat->columns == v->size, MATRIX_INVALID_MULTIPLICATION);
+	ASSERT(mat->columns == v->size, MATRIX_INVALID_DIMS_EXCEPTION);
 
 	Vector* res = Vector_new_zero(mat->rows);
 
@@ -637,7 +636,7 @@ Vector Vector_mat_vec_product_stacked(struct mat* mat, Vector* v)
 	ASSERT(mat, MATRIX_NULL_PASSED_EXCEPTION);
 	ASSERT(mat->Buffer, MEMORY_POINTING_TO_NOTHING);
 	ASSERT(v->Buffer, MEMORY_POINTING_TO_NOTHING);
-	ASSERT(mat->columns == v->size, MATRIX_INVALID_MULTIPLICATION);
+	ASSERT(mat->columns == v->size, MATRIX_INVALID_DIMS_EXCEPTION);
 
 	Vector v_stacked = Vector_create_zero(mat->rows);
 	Vector* res = &v_stacked;

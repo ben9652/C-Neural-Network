@@ -24,10 +24,6 @@
 struct Window* wnd_hnd;
 unsigned char neural_network_learned = 0;
 
-float getMatrixAdditionTime(Matrix* m1, Matrix* m2);
-float getMatrixMultiplicationTime(Matrix* m1, Matrix* m2);
-float getMatrixVectorProductTime(Matrix* mat, Vector* vec);
-void miscellaneousTests();
 void* neuralNetworkTest(Vector* const input);
 int Main();
 
@@ -81,49 +77,6 @@ int Main()
     return 0;
 }
 
-float getMatrixAdditionTime(Matrix* m1, Matrix* m2)
-{
-    init_time_measurement();
-
-    Matrix_sum(m1, m2);
-
-    finalize_time_measurement();
-
-    return get_elapsed_time(MEASURE_MILLISECONDS);
-}
-
-float getMatrixMultiplicationTime(Matrix* m1, Matrix* m2)
-{
-    init_time_measurement();
-
-    Matrix_mul(m1, m2);
-
-    finalize_time_measurement();
-
-    return get_elapsed_time(MEASURE_MILLISECONDS);
-}
-
-float getMatrixVectorProductTime(Matrix* mat, Vector* vec)
-{
-    init_time_measurement();
-
-    Vector_mat_vec_product(mat, vec);
-
-    finalize_time_measurement();
-
-    return get_elapsed_time(MEASURE_MILLISECONDS);
-}
-
-void miscellaneousTests()
-{
-    Vector* vec = Vector_new_emplace(5, 2, 16, 7, 6, 1);
-
-    Vector v = Vector_create_emplace(5, 2, 16, 7, 0, 2);
-
-    Vector_delete(vec);
-    Vector_delete_stacked(&v);
-}
-
 void* neuralNetworkTest(Vector* const input)
 {
     double learningRate;
@@ -139,12 +92,12 @@ void* neuralNetworkTest(Vector* const input)
     
     const char* neuralNetwork_Name = "XOR";
     size_t neuralNetwork_Inputs = 2;
-    size_t neuralNetwork_Outputs = 2;
+    size_t neuralNetwork_Outputs = 1;
     size_t neuralNetwork_Hiddens = 1;
     Vector* neuralNetwork_HiddenNeurons = Vector_new_emplace(neuralNetwork_Hiddens, 3);
     VectorPointers* neuralNetwork_hiddenActFn = VectorPointers_new_init(ActivationFunction_delete, neuralNetwork_Hiddens, ActivationFunction_new(SIGMOID, 1.0, 0.0));
     ActivationFunction* neuralNetwork_OutputActFn = ActivationFunction_new(SIGMOID, 1.0, 0.0);
-    unsigned char readDataFromFile = 0;
+    unsigned char readDataFromFile = 1;
 
     NeuralNetwork* xorNeuralNetwork = NeuralNetwork_new(
         neuralNetwork_Name,
@@ -163,10 +116,10 @@ void* neuralNetworkTest(Vector* const input)
 
     VectorPointers* inputs = VectorPointers_new_init(Vector_delete, 4, input1, input2, input3, input4);
 
-    Vector* desiredOutput1 = Vector_new_emplace(2, 1, 0);
-    Vector* desiredOutput2 = Vector_new_emplace(2, 0, 1);
-    Vector* desiredOutput3 = Vector_new_emplace(2, 0, 1);
-    Vector* desiredOutput4 = Vector_new_emplace(2, 1, 0);
+    Vector* desiredOutput1 = Vector_new_emplace(1, 0);
+    Vector* desiredOutput2 = Vector_new_emplace(1, 1);
+    Vector* desiredOutput3 = Vector_new_emplace(1, 1);
+    Vector* desiredOutput4 = Vector_new_emplace(1, 0);
 
     VectorPointers* desiredOutputs = VectorPointers_new_init(Vector_delete, 4,
         desiredOutput1,
@@ -182,23 +135,23 @@ void* neuralNetworkTest(Vector* const input)
     size_t i = 0;
     while (1)
     {
-        size_t randIndex = (size_t)genRandomInt(0, 3);
+        size_t randIndex = i % 4;
         Vector* input = VectorPointers_get(inputs, randIndex);
         Vector* desiredOutput = VectorPointers_get(desiredOutputs, randIndex);
 
         if (i > 100 && xorNeuralNetwork->averageCost < cost)
         {
-            NeuralNetwork_learn(xorNeuralNetwork, input, desiredOutput, learningRate, 1);
+            NeuralNetwork_single_input_learn(xorNeuralNetwork, input, desiredOutput, learningRate, 1);
             break;
         }
 
         if (++counter == WRITE_ITERATION)
         {
-            NeuralNetwork_learn(xorNeuralNetwork, input, desiredOutput, learningRate, 1);
+            NeuralNetwork_single_input_learn(xorNeuralNetwork, input, desiredOutput, learningRate, 1);
             counter = 0;
         }
         else
-            NeuralNetwork_learn(xorNeuralNetwork, input, desiredOutput, learningRate, 0);
+            NeuralNetwork_single_input_learn(xorNeuralNetwork, input, desiredOutput, learningRate, 0);
 
         i++;
     }
@@ -207,6 +160,8 @@ void* neuralNetworkTest(Vector* const input)
 
     float taken_time = get_elapsed_time(MEASURE_MILLISECONDS);
     float fSeconds = taken_time / 1000;
+
+    float fMilliseconds = (fSeconds - (int)fSeconds) * 1000;
 
     float fMinutes = fSeconds / 60;
     float minutes_decimalPart = (fMinutes - (int)fMinutes);
@@ -217,6 +172,7 @@ void* neuralNetworkTest(Vector* const input)
     fSeconds = minutes_decimalPart * 60;
     fMinutes = hours_decimalPart * 60;
 
+    int milliseconds = (int)fMilliseconds;
     int seconds = (int)roundf(fSeconds);
     int minutes = (int)roundf(fMinutes);
     int hours = (int)roundf(fHours);
@@ -225,10 +181,11 @@ void* neuralNetworkTest(Vector* const input)
 
     String* strIts = String_int_to_string(xorNeuralNetwork->algorithm->iteration);
     String* costOfNN = String_double_to_string(xorNeuralNetwork->averageCost);
+    String* strMs = String_int_to_string(milliseconds);
     String* strSecs = String_int_to_string(seconds);
     String* strMins = String_int_to_string(minutes);
     String* strHours = String_int_to_string(hours);
-    String_emplace(strToWrite, 13,
+    String_emplace(strToWrite, 15,
         "Iterations: ",
         strIts->Buffer,
         "\n",
@@ -241,7 +198,9 @@ void* neuralNetworkTest(Vector* const input)
         strMins->Buffer,
         "m ",
         strSecs->Buffer,
-        "s\n"
+        "s ",
+        strMs->Buffer,
+        "ms\n"
     );
 
     String_delete(strIts);

@@ -19,6 +19,5 @@ Backpropagation* Backpropagation_new(size_t outputSize);
 void Backpropagation_delete(Backpropagation* self);
 
 double updateCost(Backpropagation* bp, Vector* output, Vector* desiredOutput, double totalCost);
-void updateParameters(Backpropagation* bp, struct n_layer* layer);
 
 #endif

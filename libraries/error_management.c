@@ -24,11 +24,8 @@ void ErrorLog(int code)
 	case MATRIX_OUT_OF_BOUNDS_EXCEPTION:
 		PRINT_ERR("Out of range matrix index");
 		break;
-	case MATRIX_INVALID_MULTIPLICATION:
-		PRINT_ERR("Invalid matrices dimensions for multiplication");
-		break;
-	case MATRIX_INVALID_ADDITION:
-		PRINT_ERR("Invalid matrices dimensions for addition");
+	case MATRIX_INVALID_DIMS_EXCEPTION:
+		PRINT_ERR("Invalid matrices dimensions");
 		break;
 	case ARRAY_NULL_PASSED_EXCEPTION:
 		PRINT_ERR("Null vector passed to the function");
