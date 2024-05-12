@@ -21,8 +21,6 @@ Layer* Layer_new_input(size_t inputsNumber)
 	newLayer->layerNumber = 0;
 	newLayer->inputsNumber = inputsNumber;
 	newLayer->neuronsInLayer = inputsNumber;
-	newLayer->prevLayer = NULL;
-	newLayer->nextLayer = NULL;
 	newLayer->input = Vector_new(inputsNumber);
 	newLayer->output = Vector_new(inputsNumber);
 	newLayer->outputBeforeActivation = Vector_new_zero(inputsNumber);
@@ -122,6 +120,7 @@ void Layer_outputCalculation(Layer* self)
 
 		// Se hace WX+B
 		Vector outputBeforeActivation = Vector_sum_stacked(&WX, self->biases);
+		ASSERT(outputBeforeActivation.size == self->outputBeforeActivation->size, ARRAY_INVALID_DIMS_EXCEPTION);
 		Vector_set_another_vector(self->outputBeforeActivation, &outputBeforeActivation);
 
 		// Finalmente se aplica la función de activación, dando la salida total de esta capa
@@ -134,21 +133,6 @@ void Layer_outputCalculation(Layer* self)
 		fnAppliedToOutput = applyFunctionToVector(actFn, self->input);
 
 	Vector_move_stacked(self->output, &fnAppliedToOutput);
-}
-
-void Layer_learn(Layer* self, struct bp_s* bp, double learningRate)
-{
-	// Se actualizan los gradientes en base a las activaciones en las salidas de todas las neuronas
-	updateParameters(bp, self);
-
-	Matrix* weightsGradWithLearningRate = Matrix_product_with_scalar(self->weightsGradient, -learningRate);
-	Matrix_sum_void(self->weights, weightsGradWithLearningRate);
-
-	Vector* biasesGradWithLearningRate = Vector_product_with_scalar(self->biasesGradient, -learningRate);
-	Vector_sum_void(self->biases, biasesGradWithLearningRate);
-
-	Matrix_delete(weightsGradWithLearningRate);
-	Vector_delete(biasesGradWithLearningRate);
 }
 
 Vector applyFunctionToVector(ActivationFunction* af, Vector* vector)
@@ -175,9 +159,6 @@ Layer* constructor_base(Layer_Type type, size_t neuronsInLayer, ActivationFuncti
 	newLayer->layerType = type;
 	newLayer->inputsNumber = inputsNumber;
 	newLayer->neuronsInLayer = neuronsInLayer;
-
-	newLayer->prevLayer = NULL;
-	newLayer->nextLayer = NULL;
 
 	newLayer->weightsGradient = Matrix_new(neuronsInLayer, inputsNumber);
 	newLayer->sumWeightsGradient = Matrix_new_zero(neuronsInLayer, inputsNumber);

@@ -9,7 +9,6 @@
 #include "GUI.h"
 
 #define SEPARATOR "\n\t\t-------------------- O --------------------\n\n"
-#define TIME_TO_PRINT 50000
 
 static unsigned char firstTimeWriting = 1;
 static size_t counterWritingOverflow = 0;
@@ -18,12 +17,15 @@ void addLayer(NeuralNetwork* nn, Layer* layer);
 void readParameters(NeuralNetwork* nn, const char* filename, VectorPointers* matrices, VectorPointers* vectors, size_t qntyLayers);
 void writeParameters(NeuralNetwork* nn, const char* filename);
 void printParameters(NeuralNetwork* nn);
+void updateParameters(NeuralNetwork* nn, double learningRate);
 void calcActivations(NeuralNetwork* nn);
 String calcCost(NeuralNetwork* nn, Vector* desiredOutput, unsigned char writeResult);
 void writeIterationResult(NeuralNetwork* nn, const char* filename, const String* result);
 void printIterationResult(NeuralNetwork* nn);
 
-double dC_dw(Backpropagation* bp, double derivativeCostOverAct, size_t j, size_t k, Layer* layer);
+double dC_da(NeuralNetwork* nn, size_t neuron, size_t n_layer);
+double dC_dw(NeuralNetwork* nn, double derivativeCostOverAct, size_t j, size_t k, size_t n_layer);
+double dC_db(NeuralNetwork* nn, double derivativeCostOverAct, size_t j, size_t n_layer);
 
 NeuralNetwork* NeuralNetwork_new(const char* name, size_t inputsNumber, size_t outputsNumber, Vector* hiddenNeuronsNumber, VectorPointers* hiddenActFn, ActivationFunction* outputActFn, unsigned char extract_from_file)
 {
@@ -109,6 +111,15 @@ NeuralNetwork* NeuralNetwork_new(const char* name, size_t inputsNumber, size_t o
 
 		newLayer = Layer_new_4(OUTPUT_LAYER, outputsNumber, outputActFn, inputs, weights, biases);
 		addLayer(newNN, newLayer);
+
+		// Se controla si las dimensiones de las matrices y los vectores son correctas
+		for (size_t l = 1; l < newNN->hiddenLayers->size + 2; l++)
+		{
+			Layer* layer = getLayer(newNN, l);
+			size_t layerNeurons = l < newNN->hiddenLayers->size + 1 ? (size_t)Vector_get(hiddenNeuronsNumber, l - 1) : outputsNumber;
+			ASSERT(layer->weights->rows == layerNeurons, MATRIX_INVALID_DIMS_EXCEPTION);
+			ASSERT(layer->biases->size == layerNeurons, ARRAY_INVALID_DIMS_EXCEPTION);
+		}
 	}
 
 	// Se escriben en el archivo "name - Initial Parameters.txt" los parámetros (los pesos y sesgos) de las capas de la red neuronal
@@ -160,15 +171,16 @@ void NeuralNetwork_delete(NeuralNetwork* nn)
 	free(nn);
 }
 
-void NeuralNetwork_learn(NeuralNetwork* nn, Vector* input, Vector* desiredOutput, double learningRate, unsigned char writeResult)
+void NeuralNetwork_single_input_learn(NeuralNetwork* nn, Vector* input, Vector* desiredOutput, double learningRate, unsigned char writeResult)
 {
 	Vector_set_another_vector(nn->input, input);
 	calcActivations(nn);
 
 	String train_result = calcCost(nn, desiredOutput, writeResult);
 
-	for (Layer* l = nn->outputLayer; l->layerType != INPUT_LAYER; l = l->prevLayer)
-		Layer_learn(l, nn->algorithm, learningRate);
+	updateParameters(nn, learningRate);
+
+	/* De acá en adelante solo se imprimen los resultados de la iteración */
 
 	printIterationResult(nn);
 
@@ -190,83 +202,14 @@ void NeuralNetwork_learn(NeuralNetwork* nn, Vector* input, Vector* desiredOutput
 	String_delete_stacked(&train_result);
 }
 
-void NeuralNetwork_test(NeuralNetwork* nn, Vector* input, Vector* desiredOutput, unsigned char writeResult)
+Layer* getLayer(NeuralNetwork* nn, size_t index)
 {
-	Vector_set_another_vector(nn->input, input);
-	calcActivations(nn);
-
-	String test_result = String_create_container(10);
-
-	double outputElem;
-	double desiredOutputElem;
-
-	double cost = 0.0;
-	for (size_t i = 0; i < nn->output->size; i++)
-	{
-		outputElem = Vector_get(nn->output, i);
-		desiredOutputElem = Vector_get(desiredOutput, i);
-		cost += pow(outputElem - desiredOutputElem, 2);
-	}
-	cost /= nn->output->size;
-
-	nn->qntyTests++;
-	if (cost < nn->tolerance)
-		nn->successfulTests++;
-
-	double successfultTests = (double)nn->successfulTests;
-	double qntyTests = (double)nn->qntyTests;
-
-	nn->performance = successfultTests / qntyTests;
-	
-	double individualCost = 0.0;
-	for (size_t i = 0; i < nn->output->size; i++)
-	{
-		outputElem = Vector_get(nn->output, i);
-		desiredOutputElem = Vector_get(desiredOutput, i);
-		individualCost += pow(outputElem - desiredOutputElem, 2);
-	}
-	individualCost /= nn->output->size;
-
-	String individualCostStr = String_double_to_string_stacked(individualCost);
-
-	String desiredOutputVec = String_create_emplace("[");
-	String desiredOutputElemStr;
-	for (size_t i = 0; i < desiredOutput->size; i++)
-	{
-		desiredOutputElemStr = String_double_to_string_stacked(Vector_get(desiredOutput, i));
-		String_add(&desiredOutputVec, desiredOutputElemStr.Buffer);
-		if (i != nn->output->size - 1)
-			String_add(&desiredOutputVec, ", ");
-		else
-			String_add(&desiredOutputVec, "]");
-	}
-
-
-	String performanceStr = String_create_emplace(String_double_to_string(nn->performance * 100)->Buffer);
-
-	if (writeResult)
-	{
-		String_emplace(&test_result, 8,
-			"Expected output: ",
-			desiredOutputVec.Buffer,
-			"\nIndividual cost: ",
-			individualCostStr.Buffer,
-			"\nPerformance: ",
-			performanceStr.Buffer,
-			" %\n",
-			SEPARATOR
-		);
-
-		String outputFile = String_create_container(10);
-		String_emplace(&outputFile, 2, nn->name, " - Tests");
-		writeIterationResult(nn, "test", &test_result);
-	}
-
-	String_delete_stacked(&test_result);
-	String_delete_stacked(&individualCostStr);
-	String_delete_stacked(&desiredOutputVec);
-	String_delete_stacked(&desiredOutputElemStr);
-	String_delete_stacked(&performanceStr);
+	if (index == 0)
+		return nn->inputLayer;
+	else if (index == nn->hiddenLayers->size + 1)
+		return nn->outputLayer;
+	else
+		return VectorPointers_get(nn->hiddenLayers, index - 1);
 }
 
 void addLayer(NeuralNetwork* nn, Layer* layer)
@@ -281,12 +224,6 @@ void addLayer(NeuralNetwork* nn, Layer* layer)
 	{
 		short layerNumber = (short)(nn->hiddenLayers->size + 1);
 		layer->layerNumber = layerNumber;
-
-		// A esta capa nueva se le asigna como capa previa la última capa de la red neuronal
-		layer->prevLayer = nn->lastLayer;
-
-		// A la última capa de la red neuronal se le asigna como siguiente capa a la capa nueva
-		nn->lastLayer->nextLayer = layer;
 
 		// A la última capa de la red neuronal se le asigna ahora la capa nueva
 		nn->lastLayer = layer;
@@ -317,9 +254,10 @@ void writeParameters(NeuralNetwork* nn, const char* filename)
 {
 	DataManagement* de = nn->parameters_management;
 	unsigned char firstIteration = 1;
-	for (Layer* l = nn->inputLayer->nextLayer; l != NULL; l = l->nextLayer)
+	for (size_t l = 1; l < nn->hiddenLayers->size + 2; l++)
 	{
-		DataManagement_set_data(de, l->weights, l->biases);
+		Layer* layer = getLayer(nn, l);
+		DataManagement_set_data(de, layer->weights, layer->biases);
 
 		if (firstIteration)
 		{
@@ -337,8 +275,9 @@ void printParameters(NeuralNetwork* nn)
 {
 	printf("Epoch: %d\n", nn->algorithm->iteration);
 	printf("Cost: %lf\n\n", nn->averageCost);
-	for (Layer* l = nn->inputLayer->nextLayer; l != NULL; l = l->nextLayer)
+	for (size_t i = 0; i < nn->hiddenLayers->size + 2; i++)
 	{
+		Layer* l = getLayer(nn, i);
 		Matrix_show(l->weights);
 		printf("\n");
 		Vector_show(l->biases);
@@ -346,19 +285,150 @@ void printParameters(NeuralNetwork* nn)
 	}
 }
 
+void updateParameters(NeuralNetwork* nn, double learningRate)
+{
+	// Recorro todas las capas, de la última a la primera, para ajustar los parámetros según el gradiente, y al gradiente mismo
+	for (size_t l = nn->hiddenLayers->size + 1; l != 0; l--)
+	{
+		Layer* layer = getLayer(nn, l);
+
+		Vector gradientCostOverAct = Vector_create_zero(layer->neuronsInLayer);
+
+		// Para la capa actual, asigno a un vector todas las derivadas del costo respecto a la activacón de cada neurona de la capa
+		for (size_t i = 0; i < gradientCostOverAct.size; i++)
+			Vector_set(&gradientCostOverAct, i, dC_da(nn, i, l));
+
+		// Obtengo todas las derivadas del costo respecto a los pesos que conectan la capa anterior con la actual, y además los valores acumulados de estas derivadas
+		Matrix* weightsGrad = layer->weightsGradient;
+		Matrix* sumWeightsGrad = layer->sumWeightsGradient;
+
+		// Obtengo todas las derivadas del costo respecto a los sesgos de cada neurona de la capa actual, y además los valores acumulados de estas derivadas
+		Vector* biasesGrad = layer->biasesGradient;
+		Vector* sumBiasesGrad = layer->sumBiasesGradient;
+
+		// Itero sobre todas las neuronas de la capa actual para el cálculo
+		for (size_t j = 0; j < weightsGrad->rows; j++)
+		{
+			// Recojo la derivada del costo respecto a la activación de la j-ésima neurona de la capa actual
+			double DerivativeCostOverActivation = Vector_get(&gradientCostOverAct, j);
+
+			// Obtengo el inverso de la cantidad de iteraciones que va realizando la red neuronal para el cálculo del promedio
+			double calculateAverage = 1.0 / nn->algorithm->iteration;
+
+			// Calculo la derivada del costo respecto al sesgo de la neurona actual
+			double DerivativeCostOverBias = dC_db(nn, DerivativeCostOverActivation, j, l);
+
+			// Sumo esta derivada al acumulador de derivada de sesgo para la neurona j
+			double addedBiasDerivative = Vector_sum_element(sumBiasesGrad, j, DerivativeCostOverBias);
+
+			// Asigno este acumulador, promediado por la cantidad total de iteraciones, al lugar correspondiente de las derivadas del costo respecto a los sesgos
+			Vector_set(biasesGrad, j, calculateAverage * addedBiasDerivative);
+
+			// Recorro los valores de los pesos que conectan a la neurona j con las neuronas de la capa anterior para calcular la derivada total del costo respecto a cada peso
+			for (size_t k = 0; k < weightsGrad->columns; k++)
+			{
+				MAT_T DerivativeCostOverWeight = dC_dw(nn, DerivativeCostOverActivation, j, k, l);
+				Matrix_Position pos = M_Pos(j, k);
+
+				MAT_T addedWeightDerivative = Matrix_sum_element(sumWeightsGrad, pos, DerivativeCostOverWeight);
+				Matrix_set(weightsGrad, pos, calculateAverage * addedWeightDerivative);
+			}
+		}
+
+		Vector_delete_stacked(&gradientCostOverAct);
+
+		Matrix* weightsGradWithLearningRate = Matrix_product_with_scalar(layer->weightsGradient, -learningRate);
+		Matrix_sum_void(layer->weights, weightsGradWithLearningRate);
+
+		Vector* biasesGradWithLearningRate = Vector_product_with_scalar(layer->biasesGradient, -learningRate);
+		Vector_sum_void(layer->biases, biasesGradWithLearningRate);
+
+		Matrix_delete(weightsGradWithLearningRate);
+		Vector_delete(biasesGradWithLearningRate);
+	}
+}
+
+double dC_da(NeuralNetwork* nn, size_t neuron, size_t n_layer)
+{
+	Layer* layer = getLayer(nn, n_layer);
+	VEC_T actualOutput = Vector_get(layer->output, neuron);
+
+	// Solo se usará esta variable cuando la capa a la que se hace referencia es la de salida
+	VEC_T desiredOutput = 0.0;
+	if (layer->layerType == OUTPUT_LAYER)
+		desiredOutput = Vector_get(nn->algorithm->desiredOutput, neuron);
+
+	double diffBetweenOutputAndDesiredOutput = actualOutput - desiredOutput;
+	double applyAverage = 1.0 / layer->neuronsInLayer;
+
+	if (layer->layerType == OUTPUT_LAYER)
+		// La derivada del costo respecto a la activación de la última capa no es más que la derivada del error cuadrático medio. La diferencia entre la activación de la neurona de la última capa y la salida deseada en esta neurona es la que se calcula en el error cuadrático medio.
+		return applyAverage * 2 * diffBetweenOutputAndDesiredOutput;
+	else
+	{
+		Layer* next = getLayer(nn, n_layer + 1);
+		size_t neuronsNextLayer = next->neuronsInLayer;
+		double sum = 0.0;
+		for (size_t j_index = 0; j_index < neuronsNextLayer; j_index++)
+		{
+			double outputActivation = Vector_get(next->outputBeforeActivation, j_index);
+			double weight = Matrix_get(next->weights, M_Pos(j_index, neuron));
+			sum += dC_da(nn, j_index, n_layer + 1) *
+				deriv(next->actFunction, outputActivation) *
+				weight
+				;
+		}
+		return sum;
+	}
+}
+
+double dC_dw(NeuralNetwork* nn, double derivativeCostOverAct, size_t j, size_t k, size_t n_layer)
+{
+	Layer* layer = getLayer(nn, n_layer);
+	Layer* prevLayer = getLayer(nn, n_layer - 1);
+	double outputActivation = Vector_get(layer->outputBeforeActivation, j);
+	double outputPreviousLayer = Vector_get(prevLayer->output, k);
+
+	return
+		derivativeCostOverAct *
+		deriv(layer->actFunction, outputActivation) *
+		outputPreviousLayer
+		;
+}
+
+double dC_db(NeuralNetwork* nn, double derivativeCostOverAct, size_t j, size_t n_layer)
+{
+	Layer* layer = getLayer(nn, n_layer);
+
+	double outputActivation = Vector_get(layer->outputBeforeActivation, j);
+
+	return
+		derivativeCostOverAct *
+		deriv(layer->actFunction, outputActivation)
+		;
+}
+
 void calcActivations(NeuralNetwork* nn)
 {
+	// La capa de entrada calcula su salida según la función de activación que tiene asignada
 	Vector_set_another_vector(nn->inputLayer->input, nn->input);
 	Layer_outputCalculation(nn->inputLayer);
 
+	Layer* lastHiddenLayer = nn->inputLayer;
+	// Cada una de las capas ocultas calcula su salida según la salida de la capa anterior
 	for (size_t i = 0; i < nn->hiddenLayers->size; i++)
 	{
 		Layer* hl = VectorPointers_get(nn->hiddenLayers, i);
-		Vector_set_another_vector(hl->input, hl->prevLayer->output);
+		Layer* prevLayer = i == 0 ? nn->inputLayer : VectorPointers_get(nn->hiddenLayers, i - 1);
+		Vector_set_another_vector(hl->input, prevLayer->output);
 		Layer_outputCalculation(hl);
+		
+		if (i == nn->hiddenLayers->size - 1)
+			lastHiddenLayer = VectorPointers_get(nn->hiddenLayers, i);
 	}
 
-	Vector_set_another_vector(nn->outputLayer->input, nn->outputLayer->prevLayer->output);
+	// Calculo la salida de la red
+	Vector_set_another_vector(nn->outputLayer->input, lastHiddenLayer->output);
 	Layer_outputCalculation(nn->outputLayer);
 	Vector_set_another_vector(nn->output, nn->outputLayer->output);
 }

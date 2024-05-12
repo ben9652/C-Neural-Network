@@ -121,6 +121,20 @@ void GUIloop(VectorPointers* labelsForInputs, Vector* inputs)
             {
             case SDL_KEYDOWN:
                 int key_code = e.key.keysym.sym;
+
+                if (key_code == SDLK_KP_9) key_code = '9';
+                if (key_code == SDLK_KP_8) key_code = '8';
+                if (key_code == SDLK_KP_7) key_code = '7';
+                if (key_code == SDLK_KP_6) key_code = '6';
+                if (key_code == SDLK_KP_5) key_code = '5';
+                if (key_code == SDLK_KP_4) key_code = '4';
+                if (key_code == SDLK_KP_3) key_code = '3';
+                if (key_code == SDLK_KP_2) key_code = '2';
+                if (key_code == SDLK_KP_1) key_code = '1';
+                if (key_code == SDLK_KP_0) key_code = '0';
+                if (key_code == SDLK_KP_PERIOD) key_code = '.';
+                if (key_code == SDLK_KP_ENTER) key_code = '\r';
+
                 if (index < sizeInput)
                 {
                     if ((key_code >= '0' && key_code <= '9' || key_code == '.') && inputString->size < INPUT_STR_SIZE)
