@@ -92,6 +92,7 @@ void GUIloop(VectorPointers* labelsForInputs, Vector* inputs)
 
     SDL_Event e;
     int quit = 0;
+    int escaped = 0;
 
     unsigned char inputsAssigned = 0;
     
@@ -174,6 +175,7 @@ void GUIloop(VectorPointers* labelsForInputs, Vector* inputs)
                     break;
                 case SDLK_ESCAPE:
                     quit = 1;
+                    escaped = 1;
                     break;
                 }
                 break;
@@ -198,8 +200,9 @@ void GUIloop(VectorPointers* labelsForInputs, Vector* inputs)
         SDL_RenderPresent(wnd_hnd->renderer);
     }
 
-    //VectorPointers_delete_stacked(&strInputsContainer);
-    if(neural_network_learned)
+    if(escaped)
+        VectorPointers_delete_stacked(&strInputsContainer);
+    if(neural_network_learned || escaped)
         VectorPointers_delete(wnd_hnd->words_to_print);
     SDL_DestroyRenderer(wnd_hnd->renderer);
     SDL_DestroyWindow(wnd_hnd->window);

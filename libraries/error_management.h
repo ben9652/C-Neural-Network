@@ -17,9 +17,7 @@
 #define PARSE_EXCEPTIONS				0x06000000
 #define N_LAYER_EXCEPTIONS				0x07000000
 #define N_NETWORK_EXCEPTIONS			0x08000000
-#define IMAGE_EXCEPTIONS				0x09000000
-#define GLFW_EXCEPTIONS					0x0A000000
-#define IMPL_OPENGL3_EXCEPTIONS			0x0B000000
+#define U_MAP_EXCEPTIONS				0x09000000
 
 // Tipos de excepciones de memoria
 #define MEMORY_NOT_ASSIGNED_EXCEPTION	MEMORY_EXCEPTIONS | 0x00
@@ -57,6 +55,10 @@
 // Tipos de excepciones para redes neuronales
 #define N_NETWORK_MUST_HAVE_NAME		N_NETWORK_EXCEPTIONS | 0x00
 #define N_NETWORK_DESIRED_OUTPUT_WRONG	N_NETWORK_EXCEPTIONS | 0x01
+
+// Tipos de excepciones para mapas desordenados
+#define U_MAP_KEY_NULL					U_MAP_EXCEPTIONS | 0x00
+#define U_MAP_OBJ_NULL					U_MAP_EXCEPTIONS | 0x01
 
 void ErrorLog(int code);
 

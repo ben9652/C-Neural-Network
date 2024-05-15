@@ -7,11 +7,16 @@
 #include <direct.h>
 #include "DetectMemoryLeaks.h"
 #include "GUI.h"
+#include "unordered_map.h"
 
 #define SEPARATOR "\n\t\t-------------------- O --------------------\n\n"
+//#define USE_MAP
 
 static unsigned char firstTimeWriting = 1;
 static size_t counterWritingOverflow = 0;
+
+static unordered_map* derivativesCostOverActivation;
+static int dC_da_EnteredTimes = 0;
 
 void addLayer(NeuralNetwork* nn, Layer* layer);
 void readParameters(NeuralNetwork* nn, const char* filename, VectorPointers* matrices, VectorPointers* vectors, size_t qntyLayers);
@@ -150,6 +155,8 @@ NeuralNetwork* NeuralNetwork_new(const char* name, size_t inputsNumber, size_t o
 	GUI_AddWord(String_new_emplace("Cost of the neural network: "));
 	GUI_AddWordNewLine(newNN->stringCost);
 
+	derivativesCostOverActivation = unordered_map_new_store_values(sizeof(Matrix_Position));
+
 	return newNN;
 }
 
@@ -167,6 +174,7 @@ void NeuralNetwork_delete(NeuralNetwork* nn)
 	Vector_delete(nn->output);
 	//String_delete(nn->stringIteration);
 	//String_delete(nn->stringCost);
+	unordered_map_delete(derivativesCostOverActivation);
 
 	free(nn);
 }
@@ -346,10 +354,20 @@ void updateParameters(NeuralNetwork* nn, double learningRate)
 		Matrix_delete(weightsGradWithLearningRate);
 		Vector_delete(biasesGradWithLearningRate);
 	}
+#ifdef USE_MAP
+	unordered_map_clear(derivativesCostOverActivation);
+#endif
 }
 
 double dC_da(NeuralNetwork* nn, size_t neuron, size_t n_layer)
 {
+#ifdef USE_MAP
+	Matrix_Position key = M_Pos(neuron, n_layer);
+	double* gotValue = unordered_map_lookup(derivativesCostOverActivation, &key);
+	if (gotValue != NULL)
+		return *gotValue;
+#endif
+	//printf("Times dC_da() got executed: %d\n", ++dC_da_EnteredTimes);
 	Layer* layer = getLayer(nn, n_layer);
 	VEC_T actualOutput = Vector_get(layer->output, neuron);
 
@@ -362,8 +380,15 @@ double dC_da(NeuralNetwork* nn, size_t neuron, size_t n_layer)
 	double applyAverage = 1.0 / layer->neuronsInLayer;
 
 	if (layer->layerType == OUTPUT_LAYER)
+	{
+		double result = applyAverage * 2 * diffBetweenOutputAndDesiredOutput;
+#ifdef USE_MAP
+		unordered_map_insert(derivativesCostOverActivation, &key, &result);
+#endif
+
 		// La derivada del costo respecto a la activación de la última capa no es más que la derivada del error cuadrático medio. La diferencia entre la activación de la neurona de la última capa y la salida deseada en esta neurona es la que se calcula en el error cuadrático medio.
-		return applyAverage * 2 * diffBetweenOutputAndDesiredOutput;
+		return result;
+	}
 	else
 	{
 		Layer* next = getLayer(nn, n_layer + 1);

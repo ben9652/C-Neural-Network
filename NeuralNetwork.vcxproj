@@ -30,6 +30,7 @@
     <ClCompile Include="libraries\ActivationFunction.h" />
     <ClCompile Include="src\data_structures\Image.c" />
     <ClCompile Include="src\data_structures\StringVec.c" />
+    <ClCompile Include="src\data_structures\unordered_map.c" />
     <ClCompile Include="src\data_structures\VectorPointers.c" />
     <ClCompile Include="src\data_structures\Vector_stress_tests.c" />
     <ClCompile Include="src\GUI\GUI.c" />
@@ -74,6 +75,7 @@
     <ClInclude Include="libraries\Tanh.h" />
     <ClInclude Include="libraries\ThreadsManagement.h" />
     <ClInclude Include="libraries\time_measurement.h" />
+    <ClInclude Include="libraries\unordered_map.h" />
     <ClInclude Include="libraries\Vector.h" />
     <ClInclude Include="libraries\VectorPointers.h" />
     <ClInclude Include="libraries\Vector_stress_tests.h" />

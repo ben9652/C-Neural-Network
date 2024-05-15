@@ -15,11 +15,13 @@
 #include "SharedVariables.h"
 #include "ThreadsManagement.h"
 #include <Windows.h>
+#include "unordered_map.h"
 //#include "Image.h"
 
 #define WRITE_ITERATION 10000
 #define NEURAL_NETWORK_TRAINING_INPUT 2
-#define TEST_NEURAL_NETWORK
+//#define SINGLE_TEST_NEURAL_NETWORK
+#define NEURAL_NETWORK_TEST
 
 struct Window* wnd_hnd;
 unsigned char neural_network_learned = 0;
@@ -44,8 +46,11 @@ sem_t NN_Thread_Management;
 int Main()
 {
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-    //_CrtSetBreakAlloc(134);
+    //_CrtSetBreakAlloc(285);
 
+#ifndef NEURAL_NETWORK_TEST
+    unordered_map_test();
+#else
     wnd_hnd = GUI_InitWindow(740, 480);
     if (wnd_hnd == NULL)
         return 1;
@@ -55,7 +60,7 @@ int Main()
 
     VectorPointers* labelInputs = NULL;
 
-#ifdef TEST_NEURAL_NETWORK
+#ifndef SINGLE_TEST_NEURAL_NETWORK
     labelInputs = VectorPointers_new_init(String_delete, NEURAL_NETWORK_TRAINING_INPUT,
         String_new_emplace("Learning rate: "),
         String_new_emplace("Minimum neural network\'s cost to reach: ")
@@ -73,6 +78,7 @@ int Main()
     if(!neural_network_learned)
         VectorPointers_delete(labelInputs);
     Vector_delete(inputVector);
+#endif
 
     return 0;
 }
@@ -81,7 +87,7 @@ void* neuralNetworkTest(Vector* const input)
 {
     double learningRate;
     double cost;
-#ifdef TEST_NEURAL_NETWORK
+#ifndef SINGLE_TEST_NEURAL_NETWORK
     sem_wait(&NN_Thread_Management);
     learningRate = Vector_get(input, 0);
     cost = Vector_get(input, 1);
@@ -128,7 +134,7 @@ void* neuralNetworkTest(Vector* const input)
         desiredOutput4
     );
 
-#ifdef TEST_NEURAL_NETWORK
+#ifndef SINGLE_TEST_NEURAL_NETWORK
     init_time_measurement();
     
     size_t counter = 0;
@@ -217,7 +223,7 @@ void* neuralNetworkTest(Vector* const input)
 
     String_delete(strToWrite);
 #else
-    NeuralNetwork_learn(xorNeuralNetwork, input1, desiredOutput1, learningRate, 1);
+    NeuralNetwork_single_input_learn(xorNeuralNetwork, input1, desiredOutput1, learningRate, 1);
 #endif
     NeuralNetwork_delete(xorNeuralNetwork);
 
@@ -227,7 +233,7 @@ void* neuralNetworkTest(Vector* const input)
     VectorPointers_delete(inputs);
     VectorPointers_delete(desiredOutputs);
 
-#ifdef TEST_NEURAL_NETWORK
+#ifndef SINGLE_TEST_NEURAL_NETWORK
     neural_network_learned = 1;
     GUI_AddNewLine();
     GUI_AddWordNewLine(String_new_emplace("The neural network learned until the specified cost!"));
