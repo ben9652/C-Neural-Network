@@ -63,5 +63,11 @@ void ErrorLog(int code)
 	case N_NETWORK_DESIRED_OUTPUT_WRONG:
 		PRINT_ERR("The desired output's dimension doesn't match the network's output");
 		break;
+	case U_MAP_KEY_NULL:
+		PRINT_ERR("The key passed is null");
+		break;
+	case U_MAP_OBJ_NULL:
+		PRINT_ERR("The object passed is null");
+		break;
 	}
 }
