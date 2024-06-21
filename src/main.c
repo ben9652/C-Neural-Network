@@ -103,7 +103,7 @@ void* neuralNetworkTest(Vector* const input)
     Vector* neuralNetwork_HiddenNeurons = Vector_new_emplace(neuralNetwork_Hiddens, 3);
     VectorPointers* neuralNetwork_hiddenActFn = VectorPointers_new_init(ActivationFunction_delete, neuralNetwork_Hiddens, ActivationFunction_new(SIGMOID, 1.0, 0.0));
     ActivationFunction* neuralNetwork_OutputActFn = ActivationFunction_new(SIGMOID, 1.0, 0.0);
-    unsigned char readDataFromFile = 1;
+    unsigned char readDataFromFile = 0;
 
     NeuralNetwork* xorNeuralNetwork = NeuralNetwork_new(
         neuralNetwork_Name,
@@ -141,7 +141,7 @@ void* neuralNetworkTest(Vector* const input)
     size_t i = 0;
     while (1)
     {
-        size_t randIndex = i % 4;
+        size_t randIndex = genRandomInt(0, 3);
         Vector* input = VectorPointers_get(inputs, randIndex);
         Vector* desiredOutput = VectorPointers_get(desiredOutputs, randIndex);
 
